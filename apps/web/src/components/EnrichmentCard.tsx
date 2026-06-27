@@ -19,7 +19,9 @@ export function EnrichmentCard({ enrichment, variant = "default" }: EnrichmentCa
     >
       <div className="flex items-center gap-2">
         <Sparkles className={cn("text-accent-mint", dense ? "h-4 w-4" : "h-4 w-4")} aria-hidden />
-        <h3 className={cn("font-semibold", dense ? "text-sm" : "")}>Enrichment</h3>
+        <h3 className={cn("font-semibold", dense ? "text-sm" : "")}>
+          {dense ? "Enrichment summary" : "Enrichment"}
+        </h3>
       </div>
       <p className={cn("text-muted", dense ? "text-xs leading-relaxed" : "text-sm")}>
         {enrichment.description ?? "No description available."}

@@ -74,8 +74,12 @@ export function AttioWritebackCard({ attio, variant = "default" }: AttioWritebac
       </dl>
 
       {attio.personUrl && (
-        <div className="mt-4">
-          <AttioRecordLink url={attio.personUrl} label="Open in Attio" />
+        <div className={dense ? "mt-2" : "mt-4"}>
+          <AttioRecordLink
+            url={attio.personUrl}
+            label="Open in Attio"
+            variant={dense ? "link" : "button"}
+          />
         </div>
       )}
     </div>

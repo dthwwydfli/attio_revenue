@@ -6,8 +6,8 @@ import { ActiveLeadPanel } from "./ActiveLeadPanel";
 import { WorkspaceStepper } from "./WorkspaceStepper";
 import { MainStatusCard } from "./MainStatusCard";
 import { EmailDraftCard } from "./EmailDraftCard";
-import { SupportingEvidence } from "./SupportingEvidence";
-import { CompactSyncStatus } from "./CompactSyncStatus";
+import { ActionCard } from "./ActionCard";
+import { InspectorPanel } from "./InspectorPanel";
 import { WorkspaceTabs, type WorkspaceTab } from "./WorkspaceTabs";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
 import { SecurityBadge } from "./SecurityBadge";
@@ -30,13 +30,10 @@ export function CenterPanel({ run, isLoading }: CenterPanelProps) {
   }
 
   return (
-    <div
-      key={run.id}
-      className="mx-auto max-w-6xl motion-safe:transition-opacity motion-safe:duration-200 motion-safe:opacity-100"
-    >
+    <div className="mx-auto max-w-6xl">
       <ActiveLeadPanel run={run} />
 
-      <div className="mt-8">
+      <div className="mt-10">
         <WorkspaceTabs
           active={activeTab}
           onChange={setActiveTab}
@@ -49,18 +46,23 @@ export function CenterPanel({ run, isLoading }: CenterPanelProps) {
           id="panel-overview"
           role="tabpanel"
           aria-labelledby="tab-overview"
-          className="mt-10"
+          className="mx-auto mt-12 max-w-3xl space-y-10"
         >
-          <div className="grid gap-10 lg:grid-cols-[1fr_320px] lg:gap-12 xl:grid-cols-[1fr_360px]">
-            <section className="space-y-8" aria-label="Lead workflow">
-              <WorkspaceStepper run={run} />
-              <MainStatusCard run={run} />
-              <EmailDraftCard action={run.action} band={run.score?.band} />
-              <CompactSyncStatus attio={run.attio} slng={run.slng} />
-            </section>
+          <WorkspaceStepper run={run} />
+          <MainStatusCard run={run} />
+          <EmailDraftCard action={run.action} band={run.score?.band} />
+          <ActionCard run={run} />
+        </div>
+      )}
 
-            <SupportingEvidence run={run} />
-          </div>
+      {activeTab === "details" && (
+        <div
+          id="panel-details"
+          role="tabpanel"
+          aria-labelledby="tab-details"
+          className="mx-auto mt-12 max-w-2xl"
+        >
+          <InspectorPanel run={run} isLoading={isLoading} />
         </div>
       )}
 
@@ -69,7 +71,7 @@ export function CenterPanel({ run, isLoading }: CenterPanelProps) {
           id="panel-activity"
           role="tabpanel"
           aria-labelledby="tab-activity"
-          className="mt-10"
+          className="mx-auto mt-12 max-w-3xl"
         >
           <ActivityTimeline events={run.events} />
         </div>
@@ -80,7 +82,7 @@ export function CenterPanel({ run, isLoading }: CenterPanelProps) {
           id="panel-security"
           role="tabpanel"
           aria-labelledby="tab-security"
-          className="mt-10 max-w-xl"
+          className="mx-auto mt-12 max-w-xl"
         >
           <SecurityBadge variant="full" />
         </div>

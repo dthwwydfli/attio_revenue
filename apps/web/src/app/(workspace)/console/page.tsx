@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
+import { LeadPanelSkeleton } from "@/components/workspace/LoadingSkeleton";
 
 function ConsoleContent() {
   const searchParams = useSearchParams();
@@ -13,7 +14,13 @@ function ConsoleContent() {
 
 export default function ConsolePage() {
   return (
-    <Suspense fallback={<p className="p-6 text-muted">Loading console…</p>}>
+    <Suspense
+      fallback={
+        <div className="flex h-full min-h-0 flex-1 px-6 py-10 md:px-12">
+          <LeadPanelSkeleton />
+        </div>
+      }
+    >
       <ConsoleContent />
     </Suspense>
   );

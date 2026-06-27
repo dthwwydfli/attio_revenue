@@ -23,7 +23,9 @@ export function ScoreExplanationCard({ score, variant = "default" }: ScoreExplan
       <div className={cn("flex items-center justify-between gap-2", dense ? "mb-2" : "mb-3")}>
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-accent-lavender" aria-hidden />
-          <h3 className="text-sm font-semibold">Lead score</h3>
+          <h3 className="text-sm font-semibold">
+            {dense ? "Why this score" : "Lead score"}
+          </h3>
         </div>
         <ScoreBadge band={score.band} score={score.score} className="text-xs" />
       </div>
