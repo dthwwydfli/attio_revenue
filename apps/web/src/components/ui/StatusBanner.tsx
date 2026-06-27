@@ -17,7 +17,7 @@ const VARIANT_STYLES: Record<StatusBannerVariant, string> = {
   error: "border-red-500/30 bg-red-500/10 text-red-300",
   warning: "border-amber-500/30 bg-amber-500/10 text-amber-300",
   info: "border-blue-400/30 bg-blue-400/10 text-blue-300",
-  success: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  success: "border-accent/30 bg-accent/10 text-accent",
 };
 
 export function StatusBanner({

@@ -1,6 +1,14 @@
 import type { SlngResult } from "@leadloop/shared";
 import { Phone } from "lucide-react";
+import Link from "next/link";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { cn } from "@/lib/utils";
+import {
+  canOpenVoiceSession,
+  hasLiveSlngSession,
+  isDemoSlngSession,
+  voiceSessionPath,
+} from "@/lib/slng-utils";
 
 const labels: Record<string, string> = {
   skipped: "Voice skipped",
@@ -9,20 +17,19 @@ const labels: Record<string, string> = {
   failed: "Voice failed",
 };
 
-function isDemoSlngSession(slng: SlngResult): boolean {
-  return !slng.roomUrl || slng.callId?.startsWith("mock-") === true;
-}
-
 interface SLNGCallStatusProps {
   slng: SlngResult;
+  leadId: string;
   variant?: "default" | "dense";
 }
 
-export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProps) {
+export function SLNGCallStatus({ slng, leadId, variant = "default" }: SLNGCallStatusProps) {
   if (slng.status === "skipped") return null;
 
   const dense = variant === "dense";
   const isDemo = isDemoSlngSession(slng);
+  const isLive = hasLiveSlngSession(slng);
+  const showLink = canOpenVoiceSession(slng);
 
   return (
     <div
@@ -34,23 +41,8 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
       <div className="flex items-center gap-2">
         <Phone className="h-4 w-4 text-accent-peach" aria-hidden />
         <h3 className={cn("font-semibold", dense ? "text-sm" : "")}>SLNG Voice</h3>
-        <span
-          className={cn(
-            "ml-auto text-[10px] font-medium",
-            isDemo ? "text-muted" : "flex items-center gap-1 text-accent",
-          )}
-        >
-          {isDemo ? (
-            "Demo"
-          ) : (
-            <>
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-              </span>
-              Live
-            </>
-          )}
+        <span className={cn("ml-auto text-[10px] font-medium", isLive ? "text-accent" : "text-muted")}>
+          {isLive ? "Live" : "Demo"}
         </span>
       </div>
       <p className={cn("capitalize", dense ? "text-xs" : "text-sm")}>
@@ -61,20 +53,20 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
           {slng.transcriptSnippet}
         </p>
       )}
-      {slng.roomUrl && !isDemo ? (
-        <a
-          href={slng.roomUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-accent transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      {showLink && (
+        <Link
+          href={voiceSessionPath(leadId)}
+          className="inline-flex items-center gap-1 text-xs text-accent transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          Open voice session →
-        </a>
-      ) : isDemo ? (
+          {isLive ? "Open voice session" : "View voice session (demo)"}
+          <ArrowIcon className="h-3.5 w-3.5" />
+        </Link>
+      )}
+      {isDemo && (
         <p className={cn("text-muted", dense ? "text-xs" : "text-sm")}>
-          Live voice requires real SLNG keys — check Settings → Live integrations.
+          Live voice requires real SLNG keys. Check Integrations for connection status.
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function ActivityTimeline({ events, compact = false }: ActivityTimelinePr
               <span className="font-medium text-foreground capitalize">
                 {e.step.replace(/_/g, " ")}
               </span>
-              {" — "}
+              {" · "}
               {e.status}
               {e.message ? `: ${e.message}` : ""}
             </span>
