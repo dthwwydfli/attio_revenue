@@ -21,8 +21,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared
       '@superlinked/sie-sdk':
-        specifier: ^0.1.0
-        version: 0.1.10
+        specifier: ^0.6.14
+        version: 0.6.14
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -514,8 +514,8 @@ packages:
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
-  '@superlinked/sie-sdk@0.1.10':
-    resolution: {integrity: sha512-Sx50tRC3bU27incGltuBAXtvRgdgAFq2fgh//Akz2WmLMuPos9FGBzsntgpxT0wdEoXerOm9XlgQlQaDKpyDkA==}
+  '@superlinked/sie-sdk@0.6.14':
+    resolution: {integrity: sha512-MBKNkecOOAiKoJthfyZJidqu4vCA5R05lz00PpI3Kc/0Hm3Z5Twb048lmYcwiBgPdSVRTEQyVaCo6UtFW3NeDw==}
     engines: {node: '>=22.0.0'}
 
   '@swc/helpers@0.5.15':
@@ -1409,7 +1409,7 @@ snapshots:
 
   '@pinojs/redact@0.4.0': {}
 
-  '@superlinked/sie-sdk@0.1.10':
+  '@superlinked/sie-sdk@0.6.14':
     dependencies:
       '@msgpack/msgpack': 3.1.3
 

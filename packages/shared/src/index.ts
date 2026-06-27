@@ -80,7 +80,7 @@ export const GeneratedActionSchema = z.object({
   taskBody: z.string().optional(),
   shouldCallVoice: z.boolean(),
   rationale: z.string(),
-  source: z.enum(["openai", "groq", "template"]),
+  source: z.enum(["openai", "groq", "template", "sie", "anthropic", "gemini", "fallback"]),
 });
 export type GeneratedAction = z.infer<typeof GeneratedActionSchema>;
 
