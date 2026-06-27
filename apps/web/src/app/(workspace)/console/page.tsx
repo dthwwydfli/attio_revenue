@@ -1,16 +1,8 @@
 "use client";
 
 import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace/WorkspaceShell";
 import { LeadPanelSkeleton } from "@/components/workspace/LoadingSkeleton";
-
-function ConsoleContent() {
-  const searchParams = useSearchParams();
-  const leadId = searchParams.get("leadId");
-
-  return <WorkspaceShell initialLeadId={leadId} />;
-}
 
 export default function ConsolePage() {
   return (
@@ -21,7 +13,7 @@ export default function ConsolePage() {
         </div>
       }
     >
-      <ConsoleContent />
+      <WorkspaceShell />
     </Suspense>
   );
 }

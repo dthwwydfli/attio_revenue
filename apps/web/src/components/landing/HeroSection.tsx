@@ -1,5 +1,6 @@
 import { HERO_COPY } from "./landing-data";
 import { HeroPreviewCard } from "./HeroPreviewCard";
+import { ReplayShortcuts } from "./ReplayShortcuts";
 import { SectionLabel } from "./SectionLabel";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,8 @@ export function HeroSection({ apiOnline }: HeroSectionProps) {
               </span>
             </div>
           )}
+
+          <ReplayShortcuts />
         </div>
 
         <div className="lg:col-span-5">
