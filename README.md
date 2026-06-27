@@ -18,18 +18,21 @@ Form/Webhook → n8n → LeadLoop API → [Enrich | Superlinked | LLM | SLNG] �
 
 ## Backend Setup
 
-Layer 0 is the Fastify bootstrap: validated env, structured logging, shared HTTP client, and stub routes. Higher layers (Attio, enrichment, scoring, LLM, SLNG, pipeline) plug in on top.
+Layer 0 is the Fastify bootstrap: validated env, structured logging, shared HTTP client, and route registration. The lead pipeline, Attio client, enrichment, scoring, LLM, and SLNG integrations are wired through the route handlers.
 
 ### Structure
 
 ```
 apps/api/src/
 ├── index.ts           # Fastify entrypoint + graceful shutdown
-├── routes/index.ts    # Route registration (stubs until pipeline wired)
+├── routes/index.ts    # Route registration (pipeline, demo, webhooks)
+├── pipeline.ts        # Full lead processing pipeline
 ├── lib/
 │   ├── env.ts         # Zod-validated environment
 │   ├── logger.ts      # Pino logger + child loggers per module
 │   └── http.ts        # Shared fetch wrapper (timeout, retries, JSON)
+├── services/
+│   └── attio.ts       # Typed Attio v2 client
 └── types/global.ts    # Shared API response types
 ```
 
@@ -66,17 +69,8 @@ pnpm start:api
 
 ```bash
 curl http://localhost:3001/health
-# → { "ok": true, "uptime": 12.34 }
+# → { "ok": true, "uptime": 12.34, "attio": true, ... }
 ```
-
-Stub routes return `501` until their layer is wired:
-
-| Method | Path | Layer |
-|--------|------|-------|
-| POST | `/leads/process` | pipeline |
-| GET | `/leads/:id/status` | pipeline |
-| POST | `/webhooks/slng` | slng |
-| POST | `/demo/replay/:scenario` | pipeline |
 
 ### Logging
 
@@ -102,13 +96,13 @@ Use `http()` from `lib/http.ts` for outbound calls (enrichment, SLNG, SIE, etc.)
 - Node.js 20+
 - pnpm 9+
 - Attio API key ([developer settings](https://attio.com))
-- Optional: Tavily, OpenAI, SLNG, Superlinked SIE keys
+- Tavily or Serper, OpenAI or Groq, SLNG, and Superlinked SIE keys (see `.env.example`)
 
 ### Setup
 
 ```bash
 cp .env.example .env
-# Fill in ATTIO_API_KEY and ATTIO_WORKSPACE_SLUG at minimum
+# Fill in all required values listed in .env.example
 
 pnpm install
 pnpm --filter @leadloop/shared build
@@ -174,15 +168,16 @@ See [`DEMO.md`](DEMO.md) for the 90-second pitch script.
 
 ## API endpoints
 
-Layer 0 exposes `/health` live; other routes return `501` until their layer is wired (see [Backend Setup](#backend-setup)).
-
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check (`ok`, `uptime`) |
-| POST | `/leads/process` | Run full pipeline *(stub)* |
-| GET | `/leads/:id/status` | Poll status for frontend *(stub)* |
-| POST | `/demo/replay/:scenario` | Replay hot/warm/cold *(stub)* |
-| POST | `/webhooks/slng` | SLNG callback *(stub)* |
+| GET | `/health` | Health check (`ok`, `uptime`, integration flags) |
+| GET | `/icp` | ICP description for scoring |
+| POST | `/leads/process` | Run full pipeline |
+| GET | `/leads/:id` | Full lead run record |
+| GET | `/leads/:id/status` | Poll status for frontend |
+| GET | `/leads` | List recent runs |
+| POST | `/demo/replay/:scenario` | Replay hot/warm/cold demo lead |
+| POST | `/webhooks/slng` | SLNG voice callback |
 
 ## Environment variables
 
