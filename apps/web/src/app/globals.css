@@ -31,7 +31,9 @@ body {
   to {
     transform: translateX(-50%);
   }
+}
 
+@layer utilities {
   .text-gradient {
     @apply bg-gradient-to-r from-foreground to-muted bg-clip-text text-transparent;
   }

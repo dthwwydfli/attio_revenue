@@ -16,9 +16,9 @@ export function FinalCTA() {
           </h2>
           <p className="mx-auto max-w-lg text-muted">{FINAL_CTA.subhead}</p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Button href="/demo/submit">{FINAL_CTA.primaryCta}</Button>
+            <Button href="/console">{FINAL_CTA.primaryCta}</Button>
             <Link
-              href="/demo"
+              href="/console"
               className="text-sm font-semibold text-muted transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {FINAL_CTA.secondaryCta} →

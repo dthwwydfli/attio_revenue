@@ -55,7 +55,7 @@ export default function SubmitLeadPage() {
         method: "POST",
         body: JSON.stringify({ ...form, source: "demo_form" }),
       });
-      router.push(`/demo?leadId=${result.leadRunId}`);
+      router.push(`/console?leadId=${result.leadRunId}`);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Submit failed");
       setLoading(false);

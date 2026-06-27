@@ -29,7 +29,7 @@ export function HeroSection({ apiOnline }: HeroSectionProps) {
           </p>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button href="/demo/submit">{HERO_COPY.primaryCta}</Button>
+            <Button href="/console">{HERO_COPY.primaryCta}</Button>
             <Button href="#workflow" variant="secondary">
               {HERO_COPY.secondaryCta}
             </Button>

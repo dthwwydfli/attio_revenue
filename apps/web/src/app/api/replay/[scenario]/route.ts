@@ -9,9 +9,9 @@ export async function POST(
 
   const res = await fetch(`${apiUrl}/demo/replay/${scenario}`, { method: "POST" });
   if (!res.ok) {
-    redirect("/demo?error=replay_failed");
+    redirect("/console?error=replay_failed");
   }
 
   const data = (await res.json()) as { leadRunId?: string };
-  redirect(`/demo?leadId=${data.leadRunId ?? ""}`);
+  redirect(`/console?leadId=${data.leadRunId ?? ""}`);
 }

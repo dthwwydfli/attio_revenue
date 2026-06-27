@@ -33,7 +33,7 @@ export function WorkflowPipeline() {
 
         <p className="mt-10 text-center text-sm text-muted">
           <Link
-            href="/demo"
+            href="/console"
             className="text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Watch a live pipeline run →
