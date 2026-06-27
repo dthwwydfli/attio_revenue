@@ -3,6 +3,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
 import { env } from "../lib/env.js";
+import {
+  isSlngApiKeyConfigured,
+  listSlngAgents,
+  resolveSlngAgentId,
+  testSlngGatewayTts,
+} from "../lib/slng-client.js";
 import { assertCompany, assertPerson, createNote } from "../services/attio.js";
 import { enrichLead } from "../services/enrich.js";
 import { scoreLead, toScoreResult } from "../services/scoring.js";
@@ -146,16 +152,23 @@ async function testOpenAI() {
 }
 
 async function testSLNG() {
-  if (!env.slngApiKey || env.slngApiKey.includes("placeholder")) {
+  if (!isSlngApiKeyConfigured()) {
     skip("SLNG", "No real SLNG_API_KEY in .env.local — voice uses mock in pipeline");
     return;
   }
   try {
-    const res = await fetch(`https://api.agents.slng.ai/v1/agents/${env.slngAgentId}`, {
-      headers: { Authorization: `Bearer ${env.slngApiKey}` },
-    });
-    if (res.ok) pass("SLNG", `HTTP ${res.status}`);
-    else fail("SLNG", `HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
+    await testSlngGatewayTts();
+    const agentId = await resolveSlngAgentId();
+    if (agentId) {
+      pass("SLNG", `Gateway TTS OK; voice agent=${agentId}`);
+    } else {
+      const agents = await listSlngAgents();
+      if (agents.length === 0) {
+        pass("SLNG", "API key + gateway TTS OK; run pnpm slng:setup to create voice agent");
+      } else {
+        fail("SLNG", "Agents exist but could not resolve agent ID");
+      }
+    }
   } catch (err) {
     fail("SLNG", err instanceof Error ? err.message : String(err));
   }
