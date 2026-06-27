@@ -1,0 +1,13 @@
+{
+  "domain": "localshop.com",
+  "description": "Local Shops is an e-commerce marketplace for small businesses. The Local Shop offers marketing strategies for small businesses in Concord, California.",
+  "industry": "B2B SaaS",
+  "employee_band": "1-10 employees",
+  "website_url": "https://localshop.com",
+  "linkedin_url": "https://www.linkedin.com/company/the-local-shop",
+  "news": [
+    "Local Shops - Crunchbase Company Profile & Funding",
+    "The Local Shop - A resource for small businesses"
+  ],
+  "source": "tavily"
+}

@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'no lint configured'",
     "attio:setup": "tsx src/scripts/attio-setup.ts",
-    "attio:test": "tsx src/scripts/attio-test.ts"
+    "attio:test": "tsx src/scripts/attio-test.ts",
+    "enrich:test": "tsx src/scripts/enrich-test.ts",
+    "test:apis": "tsx src/scripts/test-all-apis.ts"
   },
   "dependencies": {
     "@leadloop/shared": "workspace:*",

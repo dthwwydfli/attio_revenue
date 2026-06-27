@@ -102,9 +102,9 @@ async function writebackToAttio(
 
     if (companyRecordId) {
       await updateCompanyAttributes(companyRecordId, {
-        enrichment_summary: enrichment.description.slice(0, 500),
-        employee_band: enrichment.employeeBand,
-        industry_tag: enrichment.industry,
+        enrichment_summary: enrichment.description?.slice(0, 500) ?? "",
+        employee_band: enrichment.employee_band ?? "",
+        industry_tag: enrichment.industry ?? "",
       });
     }
 
@@ -190,7 +190,7 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     updateRun(id, { currentStep: "enriched" });
     appendEvent(id, audit("enriched", "started"));
     const enrichStart = Date.now();
-    const enrichment = await enrichLead(input, domain);
+    const enrichment = await enrichLead(input.company, domain);
     appendEvent(id, audit("enriched", "completed", enrichment.source, Date.now() - enrichStart));
     updateRun(id, { enrichment });
 

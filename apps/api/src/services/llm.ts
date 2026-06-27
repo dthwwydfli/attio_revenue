@@ -135,11 +135,11 @@ function templateAction(
   const templates: Record<ScoreResult["band"], GeneratedAction> = {
     hot: {
       replySubject: `Re: ${input.company} + LeadLoop — let's talk this week`,
-      replyBody: `Hi ${firstName},\n\nThanks for reaching out about agentic CRM for ${input.company}. Based on your ${input.role ?? "role"} and ${enrichment.industry} focus, I'd love to show how LeadLoop routes inbound leads autonomously into Attio with scoring and voice follow-up.\n\nAre you free for 20 minutes this week?\n\nBest,\nLeadLoop Agent`,
+      replyBody: `Hi ${firstName},\n\nThanks for reaching out about agentic CRM for ${input.company}. Based on your ${input.role ?? "role"} and ${enrichment.industry ?? "company"} focus, I'd love to show how LeadLoop routes inbound leads autonomously into Attio with scoring and voice follow-up.\n\nAre you free for 20 minutes this week?\n\nBest,\nLeadLoop Agent`,
       taskTitle: `[HOT] Book demo with ${input.name}`,
       taskBody: `Score ${score.score}/100. ${score.rankReasons.join(". ")}. Reply drafted — prioritize outreach.`,
       shouldCallVoice: Boolean(input.phone),
-      rationale: `Hot lead (${score.score}/100): strong ICP match for ${enrichment.industry}, ${enrichment.employeeBand} employees.`,
+      rationale: `Hot lead (${score.score}/100): strong ICP match for ${enrichment.industry ?? "unknown industry"}, ${enrichment.employee_band ?? "unknown size"}.`,
       source: "template",
     },
     warm: {
