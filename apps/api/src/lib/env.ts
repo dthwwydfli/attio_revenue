@@ -91,7 +91,7 @@ export const env = {
   groqApiKey: parsed.GROQ_API_KEY ?? "",
   anthropicApiKey: parsed.ANTHROPIC_API_KEY ?? "",
   geminiApiKey: parsed.GEMINI_API_KEY ?? "",
-  geminiModel: parsed.GEMINI_MODEL ?? "gemini-2.5-flash",
+  geminiModel: parsed.GEMINI_MODEL ?? "gemini-3.5-flash",
   tavilyApiKey: parsed.TAVILY_API_KEY ?? "",
   sieEndpoint: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "",
   sieApiKey: parsed.SIE_API_KEY ?? "",

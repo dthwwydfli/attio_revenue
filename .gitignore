@@ -8,3 +8,5 @@ dist
 .turbo
 coverage
 apps/api/data/*.json
+*.tsbuildinfo
+.pnpm-store

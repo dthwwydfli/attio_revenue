@@ -304,8 +304,8 @@ function render(): string {
   md += `3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.\n`;
   md += `4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.\n`;
   md += `5. **n8n** — PASS means N8N_WEBHOOK_URL is set and accepts pipeline callbacks.\n`;
-  md += `6. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show \`{"ok":true,"uptime":...}\`.\n`;
-  md += `7. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or n8n webhook URL.\n`;
+  md += `6. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
+  md += `7. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, n8n webhook URL, or start SIE Docker for those tests to pass.\n`;
 
   return md;
 }
