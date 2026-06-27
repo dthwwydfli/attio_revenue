@@ -4,6 +4,7 @@ import type { GeneratedAction } from "@leadloop/shared";
 import { useState } from "react";
 import { Copy, Mail, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatEmailBody } from "@/lib/workspace-utils";
 
 interface EmailDraftCardProps {
   action?: GeneratedAction;
@@ -25,14 +26,16 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
 
   if (!action?.replyBody) return null;
 
+  const body = formatEmailBody(action.replyBody);
+
   const copy = async () => {
-    await navigator.clipboard.writeText(`${action.replySubject}\n\n${action.replyBody}`);
+    await navigator.clipboard.writeText(`${action.replySubject}\n\n${body}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const isNurture = band === "cold";
-  const hasMore = action.replyBody.split("\n").filter(Boolean).length > PREVIEW_LINES;
+  const hasMore = body.split("\n").filter(Boolean).length > PREVIEW_LINES;
 
   return (
     <div
@@ -65,7 +68,7 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
       <p className="text-sm font-medium">{action.replySubject}</p>
 
       <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted">
-        {expanded ? action.replyBody : previewBody(action.replyBody)}
+        {expanded ? body : previewBody(body)}
       </pre>
 
       {hasMore && (

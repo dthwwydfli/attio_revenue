@@ -12,7 +12,7 @@ const links = [
 ];
 
 /** Routes that use the workspace sidebar — top nav links are redundant here. */
-const SIDEBAR_LAYOUT_PREFIXES = ["/console"];
+const SIDEBAR_LAYOUT_PREFIXES = ["/console", "/demo/submit", "/icp", "/security"];
 
 interface NavProps {
   variant?: "landing" | "app";

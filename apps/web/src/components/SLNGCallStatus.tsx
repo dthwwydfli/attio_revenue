@@ -9,6 +9,10 @@ const labels: Record<string, string> = {
   failed: "Voice failed",
 };
 
+function isDemoSlngSession(slng: SlngResult): boolean {
+  return !slng.roomUrl || slng.callId?.startsWith("mock-") === true;
+}
+
 interface SLNGCallStatusProps {
   slng: SlngResult;
   variant?: "default" | "dense";
@@ -18,6 +22,7 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
   if (slng.status === "skipped") return null;
 
   const dense = variant === "dense";
+  const isDemo = isDemoSlngSession(slng);
 
   return (
     <div
@@ -29,12 +34,23 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
       <div className="flex items-center gap-2">
         <Phone className="h-4 w-4 text-accent-peach" aria-hidden />
         <h3 className={cn("font-semibold", dense ? "text-sm" : "")}>SLNG Voice</h3>
-        <span className="ml-auto flex items-center gap-1 text-[10px] text-accent">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-          </span>
-          Live
+        <span
+          className={cn(
+            "ml-auto text-[10px] font-medium",
+            isDemo ? "text-muted" : "flex items-center gap-1 text-accent",
+          )}
+        >
+          {isDemo ? (
+            "Demo"
+          ) : (
+            <>
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+              </span>
+              Live
+            </>
+          )}
         </span>
       </div>
       <p className={cn("capitalize", dense ? "text-xs" : "text-sm")}>
@@ -45,7 +61,7 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
           {slng.transcriptSnippet}
         </p>
       )}
-      {slng.roomUrl && (
+      {slng.roomUrl && !isDemo ? (
         <a
           href={slng.roomUrl}
           target="_blank"
@@ -54,7 +70,11 @@ export function SLNGCallStatus({ slng, variant = "default" }: SLNGCallStatusProp
         >
           Open voice session →
         </a>
-      )}
+      ) : isDemo ? (
+        <p className={cn("text-muted", dense ? "text-xs" : "text-sm")}>
+          Live voice requires real SLNG keys — check Settings → Live integrations.
+        </p>
+      ) : null}
     </div>
   );
 }
