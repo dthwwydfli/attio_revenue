@@ -26,7 +26,7 @@ export function WorkspaceShell() {
     >
       {apiOnline === false && (
         <StatusBanner variant="warning" className="mb-6">
-          Demo mode — showing fixtures. Run{" "}
+            Demo mode: showing fixtures. Run{" "}
           <code className="rounded bg-black/20 px-1 py-0.5 text-xs">pnpm dev</code> to connect to
           the live API.
         </StatusBanner>

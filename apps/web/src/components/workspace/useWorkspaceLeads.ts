@@ -118,7 +118,7 @@ export function useWorkspaceLeads(initialLeadId?: string | null) {
         } catch {
           consecutiveErrors += 1;
           if (consecutiveErrors >= 3 && active) {
-            setPollError("Lost connection to API — polling stopped.");
+            setPollError("Lost connection to API. Polling stopped.");
           }
           return false;
         }
@@ -242,7 +242,7 @@ export function useWorkspaceLeads(initialLeadId?: string | null) {
         const data = (await res.json()) as { leadRunId?: string; error?: string };
 
         if (!res.ok || !data.leadRunId) {
-          setReplayError(data.error ?? "Replay failed — is the API running?");
+          setReplayError(data.error ?? "Replay failed. Is the API running?");
           setIsReplaying(false);
           return;
         }
@@ -277,7 +277,7 @@ export function useWorkspaceLeads(initialLeadId?: string | null) {
   const approveLead = useCallback(
     async (id: string) => {
       if (apiOnline === false) {
-        setApproveError("API offline — start the server with pnpm dev");
+        setApproveError("API offline. Start the server with pnpm dev");
         return;
       }
 

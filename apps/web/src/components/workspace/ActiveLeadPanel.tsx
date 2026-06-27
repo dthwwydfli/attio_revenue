@@ -1,5 +1,6 @@
 import type { LeadRun } from "@leadloop/shared";
 import { ScoreBadge } from "@/components/ScoreBadge";
+import { cn } from "@/lib/utils";
 import { CompactSyncStatus } from "./CompactSyncStatus";
 import {
   isFailed,
@@ -33,27 +34,14 @@ export function ActiveLeadPanel({ run }: ActiveLeadPanelProps) {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted">
-          {processing ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-              </span>
-              <span className="font-medium text-accent">Processing</span>
-            </>
-          ) : failed ? (
-            <>
-              <span className="inline-flex h-2 w-2 rounded-full bg-red-400" aria-hidden />
-              <span className="font-medium text-red-400">Failed</span>
-            </>
-          ) : (
-            <>
-              <span className="inline-flex h-2 w-2 rounded-full bg-accent" aria-hidden />
-              <span className="font-medium text-foreground">Complete</span>
-            </>
+        <p
+          className={cn(
+            "text-xs font-medium",
+            processing ? "text-accent" : failed ? "text-red-400" : "text-foreground",
           )}
-        </div>
+        >
+          {processing ? "Processing" : failed ? "Failed" : "Complete"}
+        </p>
         <span className="hidden text-muted/40 sm:inline" aria-hidden>
           ·
         </span>

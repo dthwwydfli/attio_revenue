@@ -40,13 +40,9 @@ export function WorkspaceStepper({ run }: WorkspaceStepperProps) {
               {isComplete && !isActive ? (
                 <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
               ) : (
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full bg-current",
-                    isActive && "motion-safe:animate-pulse",
-                  )}
-                  aria-hidden
-                />
+                <span className="text-[10px] opacity-60" aria-hidden>
+                  ·
+                </span>
               )}
               {step.label}
             </div>

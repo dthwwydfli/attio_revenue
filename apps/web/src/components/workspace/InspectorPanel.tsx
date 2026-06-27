@@ -24,7 +24,7 @@ export function InspectorPanel({ run, isLoading }: InspectorPanelProps) {
       <AttioWritebackCard attio={run.attio} variant="default" />
 
       {run.slng && run.slng.status !== "skipped" && (
-        <SLNGCallStatus slng={run.slng} variant="default" />
+        <SLNGCallStatus slng={run.slng} leadId={run.id} variant="default" />
       )}
     </aside>
   );

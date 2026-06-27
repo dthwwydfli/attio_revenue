@@ -40,10 +40,6 @@ export function CompactSyncStatus({ attio, slng }: CompactSyncStatusProps) {
         <span className="inline-flex items-center gap-1.5 rounded-lg border border-accent/20 bg-accent/5 px-2.5 py-1.5 text-accent">
           <Phone className="h-3.5 w-3.5" aria-hidden />
           SLNG voice
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-          </span>
         </span>
       )}
     </div>

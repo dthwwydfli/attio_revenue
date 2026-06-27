@@ -1,8 +1,9 @@
 "use client";
 
 import type { LeadRun } from "@leadloop/shared";
-import { ArrowRight, CheckCircle2, Loader2, Mail, Phone, UserCheck } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, Phone, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { cn } from "@/lib/utils";
 import { isFailed, isProcessing } from "@/lib/workspace-utils";
@@ -36,7 +37,7 @@ const BAND_CONFIG = {
   cold: {
     title: "Queued for nurture",
     description:
-      "Lead flagged for manual review. Confirm to move to the nurture queue — no autonomous outreach.",
+      "Lead flagged for manual review. Confirm to move to the nurture queue. No autonomous outreach.",
     primary: "Move to nurture queue",
     approved: "Added to nurture queue",
     icon: UserCheck,
@@ -54,9 +55,9 @@ export function ActionCard({ run, isApproving, approveError, onApprove }: Action
       ? BAND_CONFIG[band as keyof typeof BAND_CONFIG]
       : BAND_CONFIG.warm;
   const Icon = config.icon;
-  const showVoiceLink = run.slng && run.slng.status !== "skipped" && run.slng.roomUrl;
-  const showVoiceDemo =
-    run.slng && run.slng.status !== "skipped" && !run.slng.roomUrl && band === "hot";
+  const showVoiceLink =
+    run.slng && run.slng.status !== "skipped" && band === "hot";
+  const voiceHref = `/voice/${run.id}`;
 
   const buttonLabel = approved
     ? config.approved
@@ -99,7 +100,7 @@ export function ActionCard({ run, isApproving, approveError, onApprove }: Action
           ) : approved ? (
             <CheckCircle2 className="h-4 w-4" aria-hidden />
           ) : !processing ? (
-            <ArrowRight className="h-4 w-4" aria-hidden />
+            <ArrowIcon className="h-4 w-4" />
           ) : null}
           {buttonLabel}
         </Button>
@@ -114,11 +115,11 @@ export function ActionCard({ run, isApproving, approveError, onApprove }: Action
           <StatusBanner variant="success">
             {band === "cold"
               ? "Nurture queue confirmed and logged in Attio."
-              : "Approved — check your email client for the draft."}
+              : "Approved. Check your email client for the draft."}
           </StatusBanner>
         )}
 
-        {(run.attio?.personUrl || showVoiceLink || showVoiceDemo) && (
+        {(run.attio?.personUrl || showVoiceLink) && (
           <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
             {run.attio?.personUrl && (
               <Button
@@ -132,21 +133,9 @@ export function ActionCard({ run, isApproving, approveError, onApprove }: Action
               </Button>
             )}
             {showVoiceLink && (
-              <Button
-                variant="secondary"
-                href={run.slng!.roomUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[44px]"
-              >
+              <Button variant="secondary" href={voiceHref} className="min-h-[44px]">
                 Open voice session
               </Button>
-            )}
-            {showVoiceDemo && (
-              <p className="w-full text-sm text-muted">
-                Voice session is simulated in demo mode. Add SLNG keys in Settings for a live
-                session link.
-              </p>
             )}
           </div>
         )}

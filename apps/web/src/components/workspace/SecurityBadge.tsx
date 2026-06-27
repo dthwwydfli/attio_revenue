@@ -1,5 +1,6 @@
 import { Shield } from "lucide-react";
 import Link from "next/link";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { cn } from "@/lib/utils";
 
 interface SecurityBadgeProps {
@@ -39,9 +40,10 @@ export function SecurityBadge({ variant = "compact" }: SecurityBadgeProps) {
       <div className="mt-6 flex flex-wrap gap-4">
         <Link
           href="/security"
-          className="text-sm text-accent transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="inline-flex items-center gap-1 text-sm text-accent transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          View security details →
+          View security details
+          <ArrowIcon className="h-4 w-4" />
         </Link>
         <a
           href="https://www.aikido.dev"

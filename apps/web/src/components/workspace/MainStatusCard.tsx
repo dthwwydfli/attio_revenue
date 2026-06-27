@@ -67,7 +67,7 @@ export function MainStatusCard({ run }: MainStatusCardProps) {
 
       {band === "cold" && (
         <p className="mt-5 rounded-lg border border-blue-400/20 bg-blue-400/5 px-4 py-3 text-xs leading-relaxed text-blue-300">
-          Flagged for nurture — no autonomous outreach.
+          Flagged for nurture. No autonomous outreach.
         </p>
       )}
     </div>

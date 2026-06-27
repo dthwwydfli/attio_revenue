@@ -49,13 +49,7 @@ export function LeadQueueItem({ run, selected, onSelect }: LeadQueueItemProps) {
           {formatRelativeTime(run.updatedAt)}
         </span>
         {processing && (
-          <span className="flex items-center gap-1 text-[10px] text-accent">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-            </span>
-            Running
-          </span>
+          <span className="text-[10px] font-medium text-accent">Running</span>
         )}
       </div>
     </button>

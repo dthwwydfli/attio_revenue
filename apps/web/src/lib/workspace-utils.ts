@@ -71,9 +71,9 @@ export function formatRelativeTime(iso: string): string {
 
 export function routingLabel(run: LeadRun): string {
   const band = run.score?.band;
-  if (band === "hot") return "Priority route — email + voice";
-  if (band === "warm") return "Standard route — email + task";
-  if (band === "cold") return "Nurture queue — manual review";
+  if (band === "hot") return "Priority route: email and voice";
+  if (band === "warm") return "Standard route: email and task";
+  if (band === "cold") return "Nurture queue: manual review";
   return "Pending routing decision";
 }
 

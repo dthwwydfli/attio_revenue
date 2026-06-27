@@ -2,7 +2,8 @@
 
 import type { GeneratedAction } from "@leadloop/shared";
 import { useState } from "react";
-import { Copy, Mail, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Mail } from "lucide-react";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { cn } from "@/lib/utils";
 import { formatEmailBody } from "@/lib/workspace-utils";
 
@@ -83,12 +84,12 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
         >
           {expanded ? (
             <>
-              <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+              <ArrowIcon className="h-3.5 w-3.5 rotate-180" />
               Show less
             </>
           ) : (
             <>
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+              <ArrowIcon className="h-3.5 w-3.5" />
               View full draft
             </>
           )}

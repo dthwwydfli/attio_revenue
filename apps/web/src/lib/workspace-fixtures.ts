@@ -46,12 +46,12 @@ const HOT_RUN: LeadRun = {
     source: "mock",
   },
   action: {
-    replySubject: "Re: Acme Corp + LeadLoop — let's talk this week",
+    replySubject: "Re: Acme Corp + LeadLoop: let's talk this week",
     replyBody:
       "Hi Sarah,\n\nThanks for reaching out about agentic CRM for Acme Corp. Based on your VP Revenue Operations role and B2B SaaS focus, I'd love to show how LeadLoop routes inbound leads autonomously into Attio with scoring and voice follow-up.\n\nAre you free for 20 minutes this week?\n\nBest,\nLeadLoop Agent",
     taskTitle: "[HOT] Book demo with Sarah Chen",
     taskBody:
-      "Score 92/100. B2B SaaS industry match. Senior revenue leadership role. Reply drafted — prioritize outreach.",
+      "Score 92/100. B2B SaaS industry match. Senior revenue leadership role. Reply drafted. Prioritise outreach.",
     shouldCallVoice: true,
     rationale:
       "Hot lead (92/100): strong ICP match for B2B SaaS, 200-500 employees.",
@@ -61,7 +61,7 @@ const HOT_RUN: LeadRun = {
     status: "web_session_started",
     callId: "mock-demo-hot",
     transcriptSnippet:
-      "[Demo mode] SLNG voice agent would engage Sarah Chen at Acme Corp with personalized pitch. Add SLNG_API_KEY and SLNG_AGENT_ID for a live session.",
+      "[Demo mode] SLNG voice agent would engage Sarah Chen at Acme Corp with a personalised pitch. Add SLNG_API_KEY and SLNG_AGENT_ID for a live session.",
   },
   attio: {
     personRecordId: "attio_person_sarah_chen",
@@ -110,7 +110,7 @@ const WARM_RUN: LeadRun = {
   action: {
     replySubject: "Thanks for your interest, James",
     replyBody:
-      "Hi James,\n\nAppreciate you contacting us from MidMarket Solutions. We help revenue teams automate inbound routing with Attio as the source of truth.\n\nI'll share a quick overview — would a brief call next week work?\n\nBest,\nLeadLoop Agent",
+      "Hi James,\n\nAppreciate you contacting us from MidMarket Solutions. We help revenue teams automate inbound routing with Attio as the source of truth.\n\nI'll share a quick overview. Would a brief call next week work?\n\nBest,\nLeadLoop Agent",
     taskTitle: "[WARM] Follow up with James Okonkwo",
     taskBody: "Score 62/100. Send overview and schedule call.",
     shouldCallVoice: false,
@@ -133,7 +133,7 @@ const WARM_RUN: LeadRun = {
     { step: "enriched", status: "completed", message: "fixture", offsetMin: 7.4 },
     { step: "scored", status: "completed", message: "warm (62) via mock", offsetMin: 7.1 },
     { step: "action_generated", status: "completed", message: "template", offsetMin: 6.5 },
-    { step: "voice", status: "skipped", message: "Voice skipped — warm band", offsetMin: 6.2 },
+    { step: "voice", status: "skipped", message: "Voice skipped (warm band)", offsetMin: 6.2 },
     { step: "attio_writeback", status: "completed", message: "Note attio_note_warm_001", offsetMin: 5.5 },
     { step: "completed", status: "completed", message: "Pipeline complete", offsetMin: 5 },
   ]),
@@ -165,7 +165,7 @@ const COLD_RUN: LeadRun = {
   action: {
     replySubject: "Thanks for reaching out",
     replyBody:
-      "Hi Alex,\n\nThanks for your message. LeadLoop is built for B2B teams automating inbound sales — I'll keep you on our nurture list.\n\nBest,\nLeadLoop Agent",
+      "Hi Alex,\n\nThanks for your message. LeadLoop is built for B2B teams automating inbound sales. I'll keep you on our nurture list.\n\nBest,\nLeadLoop Agent",
     shouldCallVoice: false,
     rationale: "Cold lead (28/100): low ICP fit, nurture only.",
     source: "template",
@@ -184,8 +184,8 @@ const COLD_RUN: LeadRun = {
     { step: "attio_upsert", status: "completed", message: "Person: attio_person_alex_rivera", offsetMin: 11.7 },
     { step: "enriched", status: "completed", message: "fixture", offsetMin: 11.4 },
     { step: "scored", status: "completed", message: "cold (28) via mock", offsetMin: 11.1 },
-    { step: "action_generated", status: "completed", message: "template — nurture", offsetMin: 10.5 },
-    { step: "voice", status: "skipped", message: "Voice skipped — cold band", offsetMin: 10.2 },
+    { step: "action_generated", status: "completed", message: "template (nurture)", offsetMin: 10.5 },
+    { step: "voice", status: "skipped", message: "Voice skipped (cold band)", offsetMin: 10.2 },
     { step: "attio_writeback", status: "completed", message: "Note attio_note_cold_001", offsetMin: 9.5 },
     { step: "completed", status: "completed", message: "Pipeline complete", offsetMin: 9 },
   ]),
