@@ -1,0 +1,13 @@
+{
+  "domain": "attio.com",
+  "description": "Attio is an AI-native CRM platform founded in 2019, with 51-200 employees and $52 million raised in its last funding round. It focuses on managing customer relationships and automating workflows.",
+  "industry": "B2B SaaS",
+  "employee_band": "51-200 employees",
+  "website_url": "https://attio.com",
+  "linkedin_url": "https://uk.linkedin.com/company/attio",
+  "news": [
+    "Attio - Crunchbase Company Profile & Funding",
+    "Attio - The AI CRM for GTM builders."
+  ],
+  "source": "tavily"
+}
