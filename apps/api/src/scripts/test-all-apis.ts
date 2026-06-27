@@ -175,21 +175,23 @@ async function testHttpRoutes() {
   try {
     const health = await hit("GET", "/health");
     if (health.status === 200 && health.body.includes('"ok":true')) {
-      pass("HTTP GET /health", health.body.slice(0, 80));
+      pass("HTTP GET /health", health.body.slice(0, 120));
     } else {
       fail("HTTP GET /health", `status=${health.status} — is the API running? Run: pnpm dev:api`);
     }
 
     const process = await hit("POST", "/leads/process", { name: "Test", email: "t@t.com", company: "Co" });
-    if (process.status === 501) {
-      stub("HTTP POST /leads/process", "Returns 501 — pipeline not wired to routes yet (expected)");
+    if (process.status === 400) {
+      stub("HTTP POST /leads/process", "Returns 400 for invalid payload — route is wired");
+    } else if (process.status === 200) {
+      pass("HTTP POST /leads/process", `status=${process.status}`);
     } else {
       fail("HTTP POST /leads/process", `status=${process.status}`);
     }
 
     const status = await hit("GET", "/leads/test-id/status");
-    if (status.status === 501) {
-      stub("HTTP GET /leads/:id/status", "Returns 501 — expected until pipeline wired");
+    if (status.status === 404) {
+      pass("HTTP GET /leads/:id/status", "Returns 404 for unknown id — route is wired");
     } else {
       fail("HTTP GET /leads/:id/status", `status=${status.status}`);
     }
@@ -205,17 +207,15 @@ async function testHttpRoutes() {
     });
     if (slng.status === 200 && slng.body.includes('"ok":true')) {
       pass("HTTP POST /webhooks/slng", "Returns 200 { ok: true }");
-    } else if (slng.status === 501) {
-      stub("HTTP POST /webhooks/slng", "Returns 501 — SLNG webhook not wired (restart API)");
     } else {
       fail("HTTP POST /webhooks/slng", `status=${slng.status} body=${slng.body.slice(0, 120)}`);
     }
 
     const replay = await hit("POST", "/demo/replay/hot");
-    if (replay.status === 501) {
-      stub("HTTP POST /demo/replay/:scenario", "Returns 501 — expected until pipeline wired");
+    if (replay.status === 200) {
+      pass("HTTP POST /demo/replay/:scenario", `status=${replay.status}`);
     } else {
-      fail("HTTP POST /demo/replay/:scenario", `status=${replay.status}`);
+      fail("HTTP POST /demo/replay/:scenario", `status=${replay.status} — is the API running?`);
     }
   } catch (err) {
     fail("HTTP routes", `Cannot reach ${base} — start API with: pnpm dev:api. ${err instanceof Error ? err.message : String(err)}`);
@@ -248,9 +248,8 @@ function render(): string {
   md += `2. **Tavily** — PASS means live web enrichment works. Check \`apps/api/src/fixtures/enrichment/acme-corp.json\` for cached data.\n`;
   md += `3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.\n`;
   md += `4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.\n`;
-  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show \`{"ok":true,"uptime":...}\`.\n`;
-  md += `6. **STUB routes** — 501 is correct for now; pipeline layers exist but routes are not connected yet.\n`;
-  md += `7. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
+  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
+  md += `6. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
 
   return md;
 }
