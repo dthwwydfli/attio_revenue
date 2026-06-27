@@ -3,8 +3,10 @@
   "private": true,
   "scripts": {
     "dev": "pnpm run --parallel dev",
+    "dev:clean": "rm -rf apps/web/.next && pnpm run --parallel dev",
     "dev:api": "pnpm --filter @leadloop/api dev",
     "dev:web": "pnpm --filter @leadloop/web dev",
+    "dev:web:clean": "pnpm --filter @leadloop/web dev:clean",
     "build:api": "pnpm --filter @leadloop/api build",
     "start:api": "pnpm --filter @leadloop/api start",
     "build": "pnpm run --filter @leadloop/shared build && pnpm run --parallel build",
