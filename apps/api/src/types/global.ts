@@ -1,6 +1,11 @@
 export interface HealthResponse {
   ok: true;
   uptime: number;
+  attio: boolean;
+  tavily: boolean;
+  openai: boolean;
+  slng: boolean;
+  sie: string;
 }
 
 export interface NotImplementedResponse {
