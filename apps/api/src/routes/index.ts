@@ -8,8 +8,8 @@ import {
 import { env } from "../lib/env.js";
 import { getRun, listRuns, appendEvent, updateRun } from "../store.js";
 import { processLead } from "../pipeline.js";
-import type { HealthResponse } from "../types/global.js";
 import { slngWebhookRoute } from "./webhooks/slng.js";
+import type { HealthResponse } from "../types/global.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async (): Promise<HealthResponse> => ({
@@ -60,6 +60,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/leads", async () => listRuns());
 
+  app.post("/webhooks/slng", slngWebhookRoute);
+
   app.post<{ Params: { scenario: string } }>(
     "/demo/replay/:scenario",
     async (request, reply) => {
@@ -72,6 +74,4 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       return { ...result, scenario: parsed.data };
     },
   );
-
-  app.post("/webhooks/slng", slngWebhookRoute);
 }

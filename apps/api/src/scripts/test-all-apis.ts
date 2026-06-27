@@ -248,7 +248,7 @@ function render(): string {
   md += `2. **Tavily** — PASS means live web enrichment works. Check \`apps/api/src/fixtures/enrichment/acme-corp.json\` for cached data.\n`;
   md += `3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.\n`;
   md += `4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.\n`;
-  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show \`{"ok":true,"uptime":...}\`.\n`;
+  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
   md += `6. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
 
   return md;
