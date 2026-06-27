@@ -18,7 +18,7 @@ Form/Webhook → n8n → LeadLoop API → [Enrich | Superlinked | LLM | SLNG] �
 
 ## Backend Setup
 
-Layer 0 is the Fastify bootstrap: validated env, structured logging, shared HTTP client, and route registration. The lead pipeline, Attio client, enrichment, scoring, LLM, and SLNG integrations are wired through the route handlers.
+Layer 0 is the Fastify bootstrap: validated env, structured logging, shared HTTP client, and route registration. The lead pipeline, Attio client, enrichment, Superlinked scoring, LLM, and SLNG integrations are wired through the route handlers.
 
 ### Structure
 
@@ -32,7 +32,9 @@ apps/api/src/
 │   ├── logger.ts      # Pino logger + child loggers per module
 │   └── http.ts        # Shared fetch wrapper (timeout, retries, JSON)
 ├── services/
-│   └── attio.ts       # Typed Attio v2 client
+│   ├── attio.ts       # Typed Attio v2 client
+│   ├── enrich.ts      # Layer 2 enrichment agent
+│   └── scoring.ts     # Layer 3 Superlinked ICP scoring
 └── types/global.ts    # Shared API response types
 ```
 
@@ -46,7 +48,7 @@ All variables below are **required at startup**. Copy `.env.example` and fill ev
 | `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
 | `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
 | `TAVILY_API_KEY` or `SERPER_API_KEY` | At least one enrichment provider |
-| `SIE_BASE_URL` | Superlinked SIE endpoint |
+| `SIE_ENDPOINT` or `SIE_BASE_URL` | Superlinked SIE endpoint |
 | `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
 | `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | Public API URL for frontend |
@@ -124,10 +126,14 @@ pnpm dev
 
 ```bash
 docker compose -f docker-compose.sie.yml up -d
-# Set SIE_BASE_URL=http://localhost:8080 in .env
+# Set SIE_ENDPOINT=http://localhost:8080 in .env
 ```
 
-Without SIE, scoring uses a deterministic mock fallback.
+Without SIE running, scoring falls back to a heuristic scorer. Test with:
+
+```bash
+pnpm --filter @leadloop/api scoring:test hot
+```
 
 ### n8n workflow
 

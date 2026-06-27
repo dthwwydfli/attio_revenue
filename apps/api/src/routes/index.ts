@@ -21,7 +21,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     tavily: Boolean(env.tavilyApiKey),
     openai: Boolean(env.openaiApiKey),
     slng: Boolean(env.slngApiKey && env.slngAgentId),
-    sie: env.sieBaseUrl,
+    sie: env.sieEndpoint,
   }));
 
   app.get("/icp", async () => ({

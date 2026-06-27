@@ -21,8 +21,8 @@ import {
   createTask,
   AttioApiError,
 } from "./services/attio.js";
-import { enrichLead, buildProfileText } from "./services/enrich.js";
-import { scoreLead } from "./services/superlinked.js";
+import { enrichLead } from "./services/enrich.js";
+import { scoreLead, toScoreResult } from "./services/scoring.js";
 import { generateAction } from "./services/llm.js";
 import { dispatchVoiceTouchpoint } from "./services/slng.js";
 
@@ -198,8 +198,8 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     updateRun(id, { currentStep: "scored" });
     appendEvent(id, audit("scored", "started"));
     const scoreStart = Date.now();
-    const profileText = buildProfileText(input, enrichment, domain);
-    const score = await scoreLead(profileText, undefined, input.source);
+    const scoring = await scoreLead(enrichment);
+    const score = toScoreResult(scoring);
     appendEvent(
       id,
       audit("scored", "completed", `${score.band} (${score.score}) via ${score.source}`, Date.now() - scoreStart),

@@ -18,7 +18,9 @@ const EnvSchema = z
     GROQ_API_KEY: z.string().optional(),
     TAVILY_API_KEY: z.string().optional(),
     SERPER_API_KEY: z.string().optional(),
-    SIE_BASE_URL: z.string().url("SIE_BASE_URL must be a valid URL"),
+    SIE_BASE_URL: z.string().url("SIE_BASE_URL must be a valid URL").optional(),
+    SIE_ENDPOINT: z.string().url("SIE_ENDPOINT must be a valid URL").optional(),
+    SIE_API_KEY: z.string().optional(),
     SLNG_API_KEY: z.string().min(1, "SLNG_API_KEY is required"),
     SLNG_AGENT_ID: z.string().min(1, "SLNG_AGENT_ID is required"),
     NEXT_PUBLIC_API_URL: z.string().url("NEXT_PUBLIC_API_URL must be a valid URL"),
@@ -44,6 +46,13 @@ const EnvSchema = z
         code: z.ZodIssueCode.custom,
         message: "Either TAVILY_API_KEY or SERPER_API_KEY is required",
         path: ["TAVILY_API_KEY"],
+      });
+    }
+    if (!data.SIE_BASE_URL && !data.SIE_ENDPOINT) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Either SIE_BASE_URL or SIE_ENDPOINT is required",
+        path: ["SIE_ENDPOINT"],
       });
     }
   });
@@ -74,7 +83,9 @@ export const env = {
   groqApiKey: parsed.GROQ_API_KEY ?? "",
   tavilyApiKey: parsed.TAVILY_API_KEY ?? "",
   serperApiKey: parsed.SERPER_API_KEY ?? "",
-  sieBaseUrl: parsed.SIE_BASE_URL,
+  sieEndpoint: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",
+  sieApiKey: parsed.SIE_API_KEY ?? "",
+  sieBaseUrl: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",
   sieRerankModel:
     parsed.SIE_RERANK_MODEL ?? "cross-encoder/ms-marco-MiniLM-L-6-v2",
   icpDescription:
