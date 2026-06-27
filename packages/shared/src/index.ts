@@ -149,6 +149,50 @@ export const ProcessLeadResponseSchema = z.object({
 });
 export type ProcessLeadResponse = z.infer<typeof ProcessLeadResponseSchema>;
 
+export const ProcessLeadByPersonSchema = z.object({
+  personId: z.string().min(1),
+});
+export type ProcessLeadByPersonInput = z.infer<typeof ProcessLeadByPersonSchema>;
+
+export const PipelineScoringResultSchema = z.object({
+  score: z.number(),
+  band: z.enum(["hot", "warm", "cold"]),
+  explanation: z.string(),
+  sieScore: z.number().nullable(),
+  source: z.enum(["superlinked", "heuristic"]),
+});
+export type PipelineScoringResult = z.infer<typeof PipelineScoringResultSchema>;
+
+export const PipelineAttioResultSchema = z.object({
+  noteId: z.string().nullable(),
+  taskId: z.string().nullable(),
+});
+export type PipelineAttioResult = z.infer<typeof PipelineAttioResultSchema>;
+
+export const PipelineSuccessResultSchema = z.object({
+  ok: z.literal(true),
+  lead: LeadInputSchema,
+  enrichment: EnrichmentResultSchema,
+  scoring: PipelineScoringResultSchema,
+  action: GeneratedActionSchema,
+  attio: PipelineAttioResultSchema,
+  n8nTriggered: z.boolean(),
+});
+export type PipelineSuccessResult = z.infer<typeof PipelineSuccessResultSchema>;
+
+export const PipelineErrorResultSchema = z.object({
+  ok: z.literal(false),
+  reason: z.enum(["lead_not_found", "pipeline_error"]),
+  error: z.string().optional(),
+});
+export type PipelineErrorResult = z.infer<typeof PipelineErrorResultSchema>;
+
+export const PipelineResultSchema = z.union([
+  PipelineSuccessResultSchema,
+  PipelineErrorResultSchema,
+]);
+export type PipelineResult = z.infer<typeof PipelineResultSchema>;
+
 export const DemoScenarioSchema = z.enum(["hot", "warm", "cold"]);
 export type DemoScenario = z.infer<typeof DemoScenarioSchema>;
 

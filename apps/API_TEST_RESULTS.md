@@ -1,13 +1,13 @@
 # LeadLoop API Test Results
 
-**Run at:** 2026-06-27T14:59:12.918Z
+**Run at:** 2026-06-27T15:57:25.039Z
 
 | Status | Count |
 |--------|-------|
-| PASS | 7 |
+| PASS | 10 |
 | FAIL | 0 |
-| SKIP (not configured) | 2 |
-| STUB (not wired yet) | 3 |
+| SKIP (not configured) | 3 |
+| STUB (not wired yet) | 0 |
 
 ## Results
 
@@ -15,9 +15,9 @@
 
 **Status:** PASS
 
-companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=87f24e0c-59e3-59af-b936-3fd7506bdca6, noteId=cad8ad79-9925-4176-9865-dc015c5bca5a
+companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=8b535760-debd-565d-a409-1ccf4ad3a0e5, noteId=980469fd-91e9-4ecc-a160-7c5ee03ef28a
 
-**Verify in browser:** https://app.attio.com/brunel-university/person/87f24e0c-59e3-59af-b936-3fd7506bdca6
+**Verify in browser:** https://app.attio.com/brunel-university/person/8b535760-debd-565d-a409-1ccf4ad3a0e5
 
 ### ✅ Tavily enrichment
 
@@ -55,23 +55,29 @@ No real OPENAI_API_KEY in .env.local — LLM uses template fallback
 
 No real SLNG_API_KEY in .env.local — voice uses mock in pipeline
 
+### ⏭️ n8n webhook
+
+**Status:** SKIP
+
+Webhook not registered (404) — import workflows/pipeline-callback.json in n8n and activate it
+
 ### ✅ HTTP GET /health
 
 **Status:** PASS
 
-{"ok":true,"uptime":272.4771654}
+{"ok":true,"uptime":248.0435761,"attio":true,"tavily":true,"openai":false,"slng":true,"sie":"http://a64e1dc31032c40e4b1e
 
-### 🔧 HTTP POST /leads/process
+### ✅ HTTP POST /leads/process
 
-**Status:** STUB
+**Status:** PASS
 
-Returns 501 — pipeline not wired to routes yet (expected)
+status=200, pipeline ok=true
 
-### 🔧 HTTP GET /leads/:id/status
+### ✅ HTTP GET /leads/:id/status
 
-**Status:** STUB
+**Status:** PASS
 
-Returns 501 — expected until pipeline wired
+Returns 404 for unknown id — route is wired
 
 ### ✅ HTTP POST /webhooks/slng
 
@@ -79,11 +85,11 @@ Returns 501 — expected until pipeline wired
 
 Returns 200 { ok: true }
 
-### 🔧 HTTP POST /demo/replay/:scenario
+### ✅ HTTP POST /demo/replay/:scenario
 
-**Status:** STUB
+**Status:** PASS
 
-Returns 501 — expected until pipeline wired
+status=200, pipeline ok=true
 
 ## What to look for (no terminal needed)
 
@@ -91,6 +97,6 @@ Returns 501 — expected until pipeline wired
 2. **Tavily** — PASS means live web enrichment works. Check `apps/api/src/fixtures/enrichment/acme-corp.json` for cached data.
 3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.
 4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.
-5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show `{"ok":true,"uptime":...}`.
-6. **STUB routes** — 501 is correct for now; pipeline layers exist but routes are not connected yet.
-7. **SKIP** — Add real keys to `.env.local` for OpenAI, SLNG, or start SIE Docker for those tests to pass.
+5. **n8n** — PASS means N8N_WEBHOOK_URL is set and accepts pipeline callbacks.
+6. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show `{"ok":true,"uptime":...}`.
+7. **SKIP** — Add real keys to `.env.local` for OpenAI, SLNG, or n8n webhook URL.

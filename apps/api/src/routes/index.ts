@@ -1,16 +1,11 @@
 import type { FastifyInstance } from "fastify";
-import {
-  LeadInputSchema,
-  DemoScenarioSchema,
-  DEMO_LEADS,
-  type LeadStatusResponse,
-} from "@leadloop/shared";
+import { DemoScenarioSchema, DEMO_LEADS, type LeadStatusResponse } from "@leadloop/shared";
 import { env } from "../lib/env.js";
-import { getRun, listRuns, appendEvent, updateRun } from "../store.js";
-import { processLead } from "../pipeline.js";
+import { processDemoLead } from "../pipeline.js";
+import { getRun, listRuns } from "../store.js";
 import type { HealthResponse } from "../types/global.js";
+import { processLeadRoute } from "./leads/process.js";
 import { slngWebhookRoute } from "./webhooks/slng.js";
-
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async (): Promise<HealthResponse> => ({
     ok: true,
@@ -26,15 +21,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     description: env.icpDescription,
   }));
 
-  app.post("/leads/process", async (request, reply) => {
-    const parsed = LeadInputSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply.status(400).send({ error: parsed.error.flatten() });
-    }
-    const result = await processLead(parsed.data);
-    return result;
-  });
-
+  app.post("/leads/process", processLeadRoute);
   app.get<{ Params: { id: string } }>("/leads/:id", async (request, reply) => {
     const run = getRun(request.params.id);
     if (!run) return reply.status(404).send({ error: "Lead run not found" });
@@ -68,9 +55,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "Invalid scenario. Use hot, warm, or cold." });
       }
       const lead = DEMO_LEADS[parsed.data];
-      const result = await processLead(lead);
-      return { ...result, scenario: parsed.data };
-    },
+      const result = await processDemoLead(lead);
+      return { ...result, scenario: parsed.data };    },
   );
 
   app.post("/webhooks/slng", slngWebhookRoute);

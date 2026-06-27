@@ -1,0 +1,49 @@
+{
+  "name": "LeadLoop Pipeline Callback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leadloop-pipeline",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-pipeline",
+      "name": "Pipeline Callback Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "leadloop-pipeline-callback"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "received",
+              "name": "received",
+              "value": "={{ $json }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-payload",
+      "name": "Log Pipeline Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [480, 300]
+    }
+  ],
+  "connections": {
+    "Pipeline Callback Webhook": {
+      "main": [[{ "node": "Log Pipeline Result", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "pinData": {}
+}
