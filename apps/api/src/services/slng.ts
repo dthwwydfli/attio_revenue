@@ -7,7 +7,7 @@ export interface SlngVoiceContext {
   callScript?: LLMCallScriptResult;
 }
 
-function isSlngConfigured(): boolean {
+export function isSlngConfigured(): boolean {
   return Boolean(
     env.slngApiKey &&
       env.slngAgentId &&
@@ -53,9 +53,6 @@ export async function dispatchVoiceTouchpoint(
 
   if (isSlngConfigured()) {
     try {
-      if (input.phone) {
-        return await dispatchSlngCall(input, action, ctx);
-      }
       return await dispatchSlngWebSession(input, action, ctx);
     } catch {
       return mockSlngSession(input, ctx.leadRunId);
@@ -93,14 +90,20 @@ async function dispatchSlngWebSession(
 
   const json = (await res.json()) as {
     call_id?: string;
-    livekit?: { url?: string };
+    livekit_url?: string;
+    livekit_token?: string;
     room_name?: string;
+    livekit?: { url?: string; token?: string };
   };
+
+  const livekitUrl = json.livekit_url ?? json.livekit?.url;
+  const livekitToken = json.livekit_token ?? json.livekit?.token;
 
   return {
     status: "web_session_started",
     callId: json.call_id,
-    roomUrl: json.livekit?.url,
+    livekitUrl,
+    livekitToken,
     transcriptSnippet: `Voice agent session started for ${input.name} at ${input.company}.`,
   };
 }

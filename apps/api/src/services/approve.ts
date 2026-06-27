@@ -32,14 +32,14 @@ async function writeApprovalToAttio(
   const isCold = band === "cold";
   const noteContent = isCold
     ? [
-        "## LeadLoop — Nurture confirmed",
+        "## LeadLoop: Nurture confirmed",
         "",
         `Human reviewer confirmed nurture queue for **${run.input.name}** (${run.input.company}).`,
         "",
         "No autonomous outreach will be sent.",
       ].join("\n")
     : [
-        "## LeadLoop — Human approved outreach",
+        "## LeadLoop: Human approved outreach",
         "",
         `Reviewer approved sending the generated reply to **${run.input.name}**.`,
         "",

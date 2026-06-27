@@ -9,7 +9,7 @@ import { env } from "../lib/env.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
 import { approveLead, ApprovalError } from "../services/approve.js";
-import { handleSlngWebhook, validateSlngWebhookSecret } from "../services/slng.js";
+import { handleSlngWebhook, validateSlngWebhookSecret, isSlngConfigured } from "../services/slng.js";
 import { appendEvent, updateRun } from "../store.js";
 import { createNote } from "../services/attio.js";
 import type { HealthResponse } from "../types/global.js";
@@ -21,7 +21,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     attio: Boolean(env.attioApiKey),
     tavily: Boolean(env.tavilyApiKey),
     gemini: Boolean(env.geminiApiKey),
-    slng: Boolean(env.slngApiKey && env.slngAgentId),
+    slng: isSlngConfigured(),
     sie: env.sieEndpoint,
   }));
 
@@ -127,8 +127,9 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       }
       updateRun(leadRunId, {
         slng: {
+          ...run?.slng,
           status: result.status,
-          callId: result.callId,
+          callId: result.callId ?? run?.slng?.callId,
           transcriptSnippet: result.transcriptSnippet,
         },
       });
