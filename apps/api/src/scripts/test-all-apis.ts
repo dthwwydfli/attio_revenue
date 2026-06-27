@@ -1,11 +1,12 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
 import { env } from "../lib/env.js";
 import { assertCompany, assertPerson, createNote } from "../services/attio.js";
 import { enrichLead } from "../services/enrich.js";
-import { scoreLead } from "../services/superlinked.js";
+import { scoreLead, toScoreResult } from "../services/scoring.js";
+import type { EnrichmentResult } from "@leadloop/shared";
 import { DEMO_LEADS } from "@leadloop/shared";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +76,6 @@ async function testSerper() {
   const prev = process.env.TAVILY_API_KEY;
   process.env.TAVILY_API_KEY = "";
   try {
-    // Re-import won't pick up env change; call Serper directly via fetch
     const res = await fetch("https://google.serper.dev/search", {
       method: "POST",
       headers: {
@@ -101,37 +101,36 @@ async function testSIE() {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`${env.sieBaseUrl}/v1/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: env.sieRerankModel,
-        query: { text: "B2B SaaS" },
-        items: [{ text: "Acme Corp SaaS company" }],
-      }),
+    const res = await fetch(`${env.sieEndpoint}/healthz`, {
       signal: controller.signal,
     });
     clearTimeout(timeout);
     if (res.ok) {
-      pass("Superlinked SIE", `HTTP ${res.status} at ${env.sieBaseUrl}`);
+      pass("Superlinked SIE", `HTTP ${res.status} at ${env.sieEndpoint}`);
     } else {
-      skip("Superlinked SIE", `Not running (${res.status}). Mock scorer used in pipeline instead.`);
+      skip("Superlinked SIE", `Not running (${res.status}). Heuristic scorer used instead.`);
     }
   } catch {
-    skip("Superlinked SIE", `Not reachable at ${env.sieBaseUrl}. Start with: docker compose -f docker-compose.sie.yml up -d`);
+    skip("Superlinked SIE", `Not reachable at ${env.sieEndpoint}. Heuristic scorer used instead.`);
   }
 }
 
-async function testScoringMock() {
+async function testScoring() {
   try {
-    const result = await scoreLead("B2B SaaS VP Revenue", undefined, "demo_hot");
-    if (result.band === "hot" && result.score > 0) {
-      pass("ICP scoring (mock)", `band=${result.band}, score=${result.score}`);
+    const fixturePath = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../fixtures/enrichment/hot.json",
+    );
+    const enrichment = JSON.parse(readFileSync(fixturePath, "utf8")) as EnrichmentResult;
+    const result = await scoreLead(enrichment);
+    const legacy = toScoreResult(result);
+    if (legacy.score > 0 && legacy.band) {
+      pass("ICP scoring", `band=${legacy.band}, score=${legacy.score}, source=${result.source}`);
     } else {
-      fail("ICP scoring (mock)", JSON.stringify(result));
+      fail("ICP scoring", JSON.stringify(result));
     }
   } catch (err) {
-    fail("ICP scoring (mock)", err instanceof Error ? err.message : String(err));
+    fail("ICP scoring", err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -183,37 +182,39 @@ async function testHttpRoutes() {
   try {
     const health = await hit("GET", "/health");
     if (health.status === 200 && health.body.includes('"ok":true')) {
-      pass("HTTP GET /health", health.body.slice(0, 80));
+      pass("HTTP GET /health", health.body.slice(0, 120));
     } else {
       fail("HTTP GET /health", `status=${health.status} — is the API running? Run: pnpm dev:api`);
     }
 
     const process = await hit("POST", "/leads/process", { name: "Test", email: "t@t.com", company: "Co" });
-    if (process.status === 501) {
-      stub("HTTP POST /leads/process", "Returns 501 — pipeline not wired to routes yet (expected)");
+    if (process.status === 400) {
+      stub("HTTP POST /leads/process", "Returns 400 for invalid payload — route is wired");
+    } else if (process.status === 200) {
+      pass("HTTP POST /leads/process", `status=${process.status}`);
     } else {
       fail("HTTP POST /leads/process", `status=${process.status}`);
     }
 
     const status = await hit("GET", "/leads/test-id/status");
-    if (status.status === 501) {
-      stub("HTTP GET /leads/:id/status", "Returns 501 — expected until pipeline wired");
+    if (status.status === 404) {
+      pass("HTTP GET /leads/:id/status", "Returns 404 for unknown id — route is wired");
     } else {
       fail("HTTP GET /leads/:id/status", `status=${status.status}`);
     }
 
     const slng = await hit("POST", "/webhooks/slng", {});
-    if (slng.status === 501) {
-      stub("HTTP POST /webhooks/slng", "Returns 501 — expected until SLNG webhook wired");
+    if (slng.status === 200) {
+      pass("HTTP POST /webhooks/slng", `status=${slng.status}`);
     } else {
       fail("HTTP POST /webhooks/slng", `status=${slng.status}`);
     }
 
     const replay = await hit("POST", "/demo/replay/hot");
-    if (replay.status === 501) {
-      stub("HTTP POST /demo/replay/:scenario", "Returns 501 — expected until pipeline wired");
+    if (replay.status === 200) {
+      pass("HTTP POST /demo/replay/:scenario", `status=${replay.status}`);
     } else {
-      fail("HTTP POST /demo/replay/:scenario", `status=${replay.status}`);
+      fail("HTTP POST /demo/replay/:scenario", `status=${replay.status} — is the API running?`);
     }
   } catch (err) {
     fail("HTTP routes", `Cannot reach ${base} — start API with: pnpm dev:api. ${err instanceof Error ? err.message : String(err)}`);
@@ -245,8 +246,8 @@ function render(): string {
   md += `1. **Attio** — Open the person URL above in Attio. You should see a new person, linked to Acme Corp, with a test note.\n`;
   md += `2. **Tavily** — PASS means live web enrichment works. Check \`apps/api/src/fixtures/enrichment/acme-corp.json\` for cached data.\n`;
   md += `3. **Serper** — PASS means fallback search API works if Tavily is down.\n`;
-  md += `4. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show \`{"ok":true,"uptime":...}\`.\n`;
-  md += `5. **STUB routes** — 501 is correct for now; pipeline layers exist but routes are not connected yet.\n`;
+  md += `4. **Superlinked SIE** — PASS means local SIE Docker is running. SKIP falls back to heuristic scoring.\n`;
+  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
   md += `6. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
 
   return md;
@@ -257,7 +258,7 @@ async function main() {
   await testTavily();
   await testSerper();
   await testSIE();
-  await testScoringMock();
+  await testScoring();
   await testOpenAI();
   await testSLNG();
   await testHttpRoutes();
