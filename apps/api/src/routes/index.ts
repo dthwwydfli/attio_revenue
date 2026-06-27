@@ -6,6 +6,7 @@ import { getRun, listRuns } from "../store.js";
 import type { HealthResponse } from "../types/global.js";
 import { processLeadRoute } from "./leads/process.js";
 import { slngWebhookRoute } from "./webhooks/slng.js";
+
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async (): Promise<HealthResponse> => ({
     ok: true,
@@ -47,6 +48,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/leads", async () => listRuns());
 
+  app.post("/webhooks/slng", slngWebhookRoute);
+
   app.post<{ Params: { scenario: string } }>(
     "/demo/replay/:scenario",
     async (request, reply) => {
@@ -56,8 +59,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       }
       const lead = DEMO_LEADS[parsed.data];
       const result = await processDemoLead(lead);
-      return { ...result, scenario: parsed.data };    },
+      return { ...result, scenario: parsed.data };
+    },
   );
-
-  app.post("/webhooks/slng", slngWebhookRoute);
 }

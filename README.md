@@ -48,7 +48,7 @@ All variables below are **required at startup**. Copy `.env.example` and fill ev
 | `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
 | `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
 | `TAVILY_API_KEY` | Optional live enrichment; fixtures/placeholder used when absent |
-| `SIE_ENDPOINT` + `SIE_API_KEY` | Superlinked hackathon GPU cluster |
+| `SIE_ENDPOINT` or `SIE_BASE_URL` + `SIE_API_KEY` | Superlinked hackathon GPU cluster |
 | `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
 | `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | Public API URL for frontend |
@@ -98,7 +98,7 @@ Use `http()` from `lib/http.ts` for outbound calls (enrichment, SLNG, SIE, etc.)
 - Node.js 20+
 - pnpm 9+
 - Attio API key ([developer settings](https://attio.com))
-- Tavily, OpenAI or Groq, SLNG, and Superlinked SIE keys (see `.env.example`)
+- Tavily (optional), OpenAI or Groq, SLNG, and Superlinked SIE keys (see `.env.example`)
 
 ### Setup
 
