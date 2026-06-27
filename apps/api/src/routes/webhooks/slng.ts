@@ -1,9 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import type { LeadInput } from "@leadloop/shared";
-import { LeadInputSchema } from "@leadloop/shared";
 import { createLogger } from "../../lib/logger.js";
-import { processLead } from "../../pipeline.js";
+import { runPipeline } from "../../pipeline.js";
 import {
   createNote,
   createTask,
@@ -38,58 +36,16 @@ function buildNoteBody(summary: string, transcript: string | null): string {
   return parts.join("\n");
 }
 
-function buildLeadInput(
-  context: Awaited<ReturnType<typeof fetchPersonContext>>,
-  payload: SlngWebhookPayload,
-): LeadInput | null {
-  if (!context) return null;
-
-  const email = payload.lead_email ?? context.email;
-  if (!email) {
-    logger.warn(
-      { slng_call_id: payload.call_id, attio_person_id: context.personId },
-      "Cannot build lead input — no email on payload or Attio person",
-    );
-    return null;
-  }
-
-  const company = context.companyName ?? "Unknown Company";
-  const candidate: LeadInput = {
-    name: context.name,
-    email,
-    company,
-    phone: payload.lead_phone ?? context.phone,
-    source: "slng_webhook",
-    message: `SLNG call (${payload.call_id}): ${payload.summary}`,
-    domain: undefined,
-  };
-
-  const parsed = LeadInputSchema.safeParse(candidate);
-  if (!parsed.success) {
-    logger.warn(
-      {
-        slng_call_id: payload.call_id,
-        attio_person_id: context.personId,
-        issues: parsed.error.issues,
-      },
-      "Lead input validation failed for pipeline replay",
-    );
-    return null;
-  }
-
-  return parsed.data;
-}
-
-function triggerPipelineReplay(leadInput: LeadInput, callId: string, personId: string): void {
-  void processLead(leadInput)
+function triggerPipelineReplay(personId: string, callId: string): void {
+  void runPipeline(personId)
     .then((result) => {
       logger.info(
         {
           slng_call_id: callId,
           attio_person_id: personId,
           replay_triggered: true,
-          lead_run_id: result.leadRunId,
-          status: result.status,
+          pipeline_ok: result.ok,
+          reason: result.ok ? undefined : result.reason,
         },
         "SLNG pipeline replay completed",
       );
@@ -174,9 +130,8 @@ export async function handleSlngWebhook(body: unknown): Promise<SlngWebhookRespo
     }
 
     const context = await fetchPersonContext(personId);
-    const leadInput = buildLeadInput(context, payload);
-    if (leadInput) {
-      triggerPipelineReplay(leadInput, payload.call_id, personId);
+    if (context?.email) {
+      triggerPipelineReplay(personId, payload.call_id);
       logger.info(
         {
           ...logBase,

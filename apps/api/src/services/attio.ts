@@ -153,6 +153,9 @@ export interface AttioPersonContext {
   name: string;
   email?: string;
   phone?: string;
+  role?: string;
+  source?: string;
+  message?: string;
   companyId?: string;
   companyName?: string;
 }
@@ -208,6 +211,9 @@ export async function fetchPersonContext(personId: string): Promise<AttioPersonC
     const name = readAttioValue(values, "name") ?? "Unknown Lead";
     const email = readAttioValue(values, "email_addresses");
     const phone = readAttioValue(values, "phone_numbers");
+    const role = readAttioValue(values, "job_title");
+    const source = readAttioValue(values, "source");
+    const message = readAttioValue(values, "agent_summary");
     const companyId = readAttioCompanyId(values);
 
     let companyName: string | undefined;
@@ -230,6 +236,9 @@ export async function fetchPersonContext(personId: string): Promise<AttioPersonC
       name,
       email,
       phone,
+      role,
+      source,
+      message,
       companyId,
       companyName,
     };

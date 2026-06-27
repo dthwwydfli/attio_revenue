@@ -37,6 +37,7 @@ const EnvSchema = z
     SIE_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
     ICP_DESCRIPTION: z.string().optional(),
     SLNG_WEBHOOK_SECRET: z.string().optional(),
+    N8N_WEBHOOK_URL: z.string().url("N8N_WEBHOOK_URL must be a valid URL").optional(),
     N8N_WEBHOOK_SECRET: z.string().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).optional(),
   })
@@ -108,6 +109,7 @@ export const env = {
   slngApiKey: parsed.SLNG_API_KEY,
   slngAgentId: parsed.SLNG_AGENT_ID,
   slngWebhookSecret: parsed.SLNG_WEBHOOK_SECRET ?? "",
+  n8nWebhookUrl: parsed.N8N_WEBHOOK_URL ?? "",
   n8nWebhookSecret: parsed.N8N_WEBHOOK_SECRET ?? "",
 } as const;
 
