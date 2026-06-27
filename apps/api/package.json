@@ -12,11 +12,13 @@
     "attio:setup": "tsx src/scripts/attio-setup.ts",
     "attio:test": "tsx src/scripts/attio-test.ts",
     "enrich:test": "tsx src/scripts/enrich-test.ts",
+    "scoring:test": "tsx src/scripts/scoring-test.ts",
     "test:apis": "tsx src/scripts/test-all-apis.ts"
   },
   "dependencies": {
     "@leadloop/shared": "workspace:*",
     "@fastify/cors": "^10.0.2",
+    "@superlinked/sie-sdk": "^0.1.0",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "pino": "^9.6.0",

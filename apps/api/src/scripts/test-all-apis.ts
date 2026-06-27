@@ -1,11 +1,12 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
 import { env } from "../lib/env.js";
 import { assertCompany, assertPerson, createNote } from "../services/attio.js";
 import { enrichLead } from "../services/enrich.js";
-import { scoreLead } from "../services/superlinked.js";
+import { scoreLead, toScoreResult } from "../services/scoring.js";
+import type { EnrichmentResult } from "@leadloop/shared";
 import { DEMO_LEADS } from "@leadloop/shared";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -101,37 +102,36 @@ async function testSIE() {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    const res = await fetch(`${env.sieBaseUrl}/v1/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: env.sieRerankModel,
-        query: { text: "B2B SaaS" },
-        items: [{ text: "Acme Corp SaaS company" }],
-      }),
+    const res = await fetch(`${env.sieEndpoint}/healthz`, {
       signal: controller.signal,
     });
     clearTimeout(timeout);
     if (res.ok) {
-      pass("Superlinked SIE", `HTTP ${res.status} at ${env.sieBaseUrl}`);
+      pass("Superlinked SIE", `HTTP ${res.status} at ${env.sieEndpoint}`);
     } else {
-      skip("Superlinked SIE", `Not running (${res.status}). Mock scorer used in pipeline instead.`);
+      skip("Superlinked SIE", `Not running (${res.status}). Heuristic scorer used instead.`);
     }
   } catch {
-    skip("Superlinked SIE", `Not reachable at ${env.sieBaseUrl}. Start with: docker compose -f docker-compose.sie.yml up -d`);
+    skip("Superlinked SIE", `Not reachable at ${env.sieEndpoint}. Heuristic scorer used instead.`);
   }
 }
 
-async function testScoringMock() {
+async function testScoring() {
   try {
-    const result = await scoreLead("B2B SaaS VP Revenue", undefined, "demo_hot");
-    if (result.band === "hot" && result.score > 0) {
-      pass("ICP scoring (mock)", `band=${result.band}, score=${result.score}`);
+    const fixturePath = resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../fixtures/enrichment/hot.json",
+    );
+    const enrichment = JSON.parse(readFileSync(fixturePath, "utf8")) as EnrichmentResult;
+    const result = await scoreLead(enrichment);
+    const legacy = toScoreResult(result);
+    if (legacy.score > 0 && legacy.band) {
+      pass("ICP scoring", `band=${legacy.band}, score=${legacy.score}, source=${result.source}`);
     } else {
-      fail("ICP scoring (mock)", JSON.stringify(result));
+      fail("ICP scoring", JSON.stringify(result));
     }
   } catch (err) {
-    fail("ICP scoring (mock)", err instanceof Error ? err.message : String(err));
+    fail("ICP scoring", err instanceof Error ? err.message : String(err));
   }
 }
 
@@ -257,7 +257,7 @@ async function main() {
   await testTavily();
   await testSerper();
   await testSIE();
-  await testScoringMock();
+  await testScoring();
   await testOpenAI();
   await testSLNG();
   await testHttpRoutes();

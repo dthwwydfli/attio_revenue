@@ -1,12 +1,12 @@
 # LeadLoop API Test Results
 
-**Run at:** 2026-06-27T12:45:10.804Z
+**Run at:** 2026-06-27T13:31:29.209Z
 
 | Status | Count |
 |--------|-------|
-| PASS | 4 |
+| PASS | 5 |
 | FAIL | 1 |
-| SKIP (not configured) | 3 |
+| SKIP (not configured) | 2 |
 | STUB (not wired yet) | 4 |
 
 ## Results
@@ -15,9 +15,9 @@
 
 **Status:** PASS
 
-companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=e0a539e6-39f5-58c3-9999-64d9f6cb3968, noteId=d7bea7c3-3be5-4ae4-8da2-ad021fba7ad0
+companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=9a26ab1a-016c-5aa2-b8f2-0e7292989600, noteId=10f6f883-c19e-470b-a361-86f1ad7915a1
 
-**Verify in browser:** https://app.attio.com/brunel-university/person/e0a539e6-39f5-58c3-9999-64d9f6cb3968
+**Verify in browser:** https://app.attio.com/brunel-university/person/9a26ab1a-016c-5aa2-b8f2-0e7292989600
 
 ### ✅ Tavily enrichment
 
@@ -31,17 +31,17 @@ source=tavily, domain=acmecorp.io
 
 HTTP 403: {"message":"Unauthorized.","statusCode":403}
 
-### ⏭️ Superlinked SIE
-
-**Status:** SKIP
-
-Not reachable at http://localhost:8080. Start with: docker compose -f docker-compose.sie.yml up -d
-
-### ✅ ICP scoring (mock)
+### ✅ Superlinked SIE
 
 **Status:** PASS
 
-band=hot, score=92
+HTTP 200 at http://localhost:8080
+
+### ✅ ICP scoring
+
+**Status:** PASS
+
+band=hot, score=86, source=superlinked
 
 ### ⏭️ OpenAI
 
@@ -59,7 +59,7 @@ No real SLNG_API_KEY in .env.local — voice uses mock in pipeline
 
 **Status:** PASS
 
-{"ok":true,"uptime":351.8221976}
+{"ok":true,"uptime":59.5860619}
 
 ### 🔧 HTTP POST /leads/process
 
