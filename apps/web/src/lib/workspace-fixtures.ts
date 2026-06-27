@@ -59,10 +59,9 @@ const HOT_RUN: LeadRun = {
   },
   slng: {
     status: "web_session_started",
-    callId: "slng_demo_hot_001",
-    roomUrl: "https://slng.ai/session/demo-hot",
+    callId: "mock-demo-hot",
     transcriptSnippet:
-      "Sarah confirmed Q3 budget is approved and asked for a technical walkthrough with RevOps.",
+      "[Demo mode] SLNG voice agent would engage Sarah Chen at Acme Corp with personalized pitch. Add SLNG_API_KEY and SLNG_AGENT_ID for a live session.",
   },
   attio: {
     personRecordId: "attio_person_sarah_chen",

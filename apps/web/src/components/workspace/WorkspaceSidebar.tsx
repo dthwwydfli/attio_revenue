@@ -7,13 +7,14 @@ import { IconMenu2, IconX } from "@tabler/icons-react";
 import {
   IconLayoutDashboard,
   IconSend,
+  IconPlugConnected,
   IconShield,
   IconTarget,
 } from "@tabler/icons-react";
-import type { LeadRun, DemoScenario, LeadBand } from "@leadloop/shared";
+import type { LeadRun, LeadBand } from "@leadloop/shared";
 import { cn } from "@/lib/utils";
 import { LeadQueueList } from "./LeadQueueList";
-import { DemoControls } from "./DemoControls";
+import { IntegrationStatus } from "./IntegrationStatus";
 
 const NAV_LINKS = [
   { href: "/console", label: "Console", icon: IconLayoutDashboard },
@@ -28,25 +29,22 @@ interface WorkspaceSidebarProps {
   queue: LeadRun[];
   selectedId: string;
   bandFilter: BandFilter;
-  isReplaying: boolean;
-  replayError?: string | null;
+  isReplaying?: boolean;
   onSelect: (id: string) => void;
   onFilterChange: (filter: BandFilter) => void;
-  onReplay: (scenario: DemoScenario) => void;
 }
 
 function SidebarInner({
   queue,
   selectedId,
   bandFilter,
-  isReplaying,
-  replayError,
+  isReplaying = false,
   onSelect,
   onFilterChange,
-  onReplay,
   onNavigate,
 }: WorkspaceSidebarProps & { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
 
   return (
     <>
@@ -73,7 +71,7 @@ function SidebarInner({
         })}
       </nav>
 
-      <div className="mt-6 flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
         <LeadQueueList
           queue={queue}
           selectedId={selectedId}
@@ -87,7 +85,27 @@ function SidebarInner({
         />
       </div>
 
-      <DemoControls onReplay={onReplay} isReplaying={isReplaying} error={replayError} />
+      <div className="mt-auto border-t border-white/5 pt-4">
+        <button
+          type="button"
+          onClick={() => setIntegrationsOpen((open) => !open)}
+          aria-expanded={integrationsOpen}
+          className={cn(
+            "flex min-h-[40px] w-full items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors duration-200",
+            integrationsOpen
+              ? "bg-accent/10 text-accent"
+              : "text-muted hover:bg-white/5 hover:text-foreground",
+          )}
+        >
+          <IconPlugConnected className="h-5 w-5 shrink-0" aria-hidden />
+          Integrations
+        </button>
+        {integrationsOpen && (
+          <div className="mt-2">
+            <IntegrationStatus />
+          </div>
+        )}
+      </div>
     </>
   );
 }

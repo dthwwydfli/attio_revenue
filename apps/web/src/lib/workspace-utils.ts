@@ -1,5 +1,10 @@
 import type { AuditEvent, LeadRun, PipelineStep } from "@leadloop/shared";
 
+/** Gemini sometimes returns literal `\n` in stored reply text. */
+export function formatEmailBody(body: string): string {
+  return body.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+}
+
 export const WORKSPACE_STEPS = [
   { key: "received", label: "Received" },
   { key: "enriched", label: "Enriched" },
@@ -38,13 +43,16 @@ export function getWorkspaceStepState(
 
   const completedIndices = new Set<number>();
   for (const event of run.events) {
-    if (event.status === "completed" || event.status === "skipped") {
+    if (event.status === "completed") {
       const key = toWorkspaceStep(event.step);
       completedIndices.add(workspaceStepIndex(key));
     }
+    if (event.step === "attio_writeback" && event.status === "skipped") {
+      completedIndices.delete(workspaceStepIndex("attio"));
+    }
   }
 
-  if (run.status === "completed") {
+  if (run.status === "completed" && !run.attio?.skipped) {
     WORKSPACE_STEPS.forEach((_, i) => completedIndices.add(i));
   }
 
@@ -71,6 +79,14 @@ export function routingLabel(run: LeadRun): string {
 
 export function isProcessing(run: LeadRun): boolean {
   return run.status === "processing" || run.status === "voice_pending" || run.status === "routed";
+}
+
+export function isFailed(run: LeadRun): boolean {
+  return run.status === "failed";
+}
+
+export function isInFlight(run: LeadRun): boolean {
+  return isProcessing(run);
 }
 
 export function latestEventMessage(events: AuditEvent[]): string | undefined {

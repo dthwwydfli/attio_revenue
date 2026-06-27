@@ -1,6 +1,12 @@
 import type { LeadRun } from "@leadloop/shared";
 import { ScoreBadge } from "@/components/ScoreBadge";
-import { isProcessing, routingLabel, latestEventMessage } from "@/lib/workspace-utils";
+import { CompactSyncStatus } from "./CompactSyncStatus";
+import {
+  isFailed,
+  isProcessing,
+  latestEventMessage,
+  routingLabel,
+} from "@/lib/workspace-utils";
 
 interface ActiveLeadPanelProps {
   run: LeadRun;
@@ -8,7 +14,9 @@ interface ActiveLeadPanelProps {
 
 export function ActiveLeadPanel({ run }: ActiveLeadPanelProps) {
   const processing = isProcessing(run);
-  const summary = latestEventMessage(run.events) ?? routingLabel(run);
+  const failed = isFailed(run);
+  const summary =
+    (failed && run.error ? run.error : latestEventMessage(run.events)) ?? routingLabel(run);
 
   return (
     <header className="space-y-4 border-b border-white/5 pb-8">
@@ -34,6 +42,11 @@ export function ActiveLeadPanel({ run }: ActiveLeadPanelProps) {
               </span>
               <span className="font-medium text-accent">Processing</span>
             </>
+          ) : failed ? (
+            <>
+              <span className="inline-flex h-2 w-2 rounded-full bg-red-400" aria-hidden />
+              <span className="font-medium text-red-400">Failed</span>
+            </>
           ) : (
             <>
               <span className="inline-flex h-2 w-2 rounded-full bg-accent" aria-hidden />
@@ -44,8 +57,10 @@ export function ActiveLeadPanel({ run }: ActiveLeadPanelProps) {
         <span className="hidden text-muted/40 sm:inline" aria-hidden>
           ·
         </span>
-        <p className="text-sm text-muted">{summary}</p>
+        <p className={failed ? "text-sm text-red-300" : "text-sm text-muted"}>{summary}</p>
       </div>
+
+      <CompactSyncStatus attio={run.attio} slng={run.slng} />
     </header>
   );
 }

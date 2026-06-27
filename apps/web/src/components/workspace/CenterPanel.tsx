@@ -16,9 +16,12 @@ import { LeadPanelSkeleton } from "./LoadingSkeleton";
 interface CenterPanelProps {
   run: LeadRun;
   isLoading: boolean;
+  isApproving?: boolean;
+  approveError?: string | null;
+  onApprove?: () => void;
 }
 
-export function CenterPanel({ run, isLoading }: CenterPanelProps) {
+export function CenterPanel({ run, isLoading, isApproving, approveError, onApprove }: CenterPanelProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("overview");
 
   useEffect(() => {
@@ -51,7 +54,12 @@ export function CenterPanel({ run, isLoading }: CenterPanelProps) {
           <WorkspaceStepper run={run} />
           <MainStatusCard run={run} />
           <EmailDraftCard action={run.action} band={run.score?.band} />
-          <ActionCard run={run} />
+          <ActionCard
+            run={run}
+            isApproving={isApproving}
+            approveError={approveError}
+            onApprove={onApprove}
+          />
         </div>
       )}
 
