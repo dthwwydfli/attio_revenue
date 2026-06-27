@@ -210,7 +210,7 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     updateRun(id, { currentStep: "action_generated" });
     appendEvent(id, audit("action_generated", "started"));
     const actionStart = Date.now();
-    const action = await generateAction(input, enrichment, score);
+    const action = await generateAction(input, enrichment, scoring);
     appendEvent(id, audit("action_generated", "completed", action.source, Date.now() - actionStart));
     updateRun(id, { action });
 

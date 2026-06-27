@@ -16,6 +16,9 @@ const EnvSchema = z
     ATTIO_WORKSPACE_SLUG: z.string().min(1, "ATTIO_WORKSPACE_SLUG is required"),
     OPENAI_API_KEY: z.string().optional(),
     GROQ_API_KEY: z.string().optional(),
+    ANTHROPIC_API_KEY: z.string().optional(),
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_MODEL: z.string().optional(),
     TAVILY_API_KEY: z.string().optional(),
     SERPER_API_KEY: z.string().optional(),
     SIE_BASE_URL: z.string().url("SIE_BASE_URL must be a valid URL").optional(),
@@ -28,16 +31,24 @@ const EnvSchema = z
     PORT: z.coerce.number().int().positive().default(3001),
     API_BASE_URL: z.string().url().optional(),
     SIE_RERANK_MODEL: z.string().optional(),
+    SIE_LLM_MODEL: z.string().optional(),
     ICP_DESCRIPTION: z.string().optional(),
     SLNG_WEBHOOK_SECRET: z.string().optional(),
     N8N_WEBHOOK_SECRET: z.string().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.OPENAI_API_KEY && !data.GROQ_API_KEY) {
+    const hasLlm =
+      Boolean(data.OPENAI_API_KEY) ||
+      Boolean(data.GROQ_API_KEY) ||
+      Boolean(data.ANTHROPIC_API_KEY) ||
+      Boolean(data.GEMINI_API_KEY) ||
+      Boolean(data.SIE_API_KEY);
+    if (!hasLlm) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Either OPENAI_API_KEY or GROQ_API_KEY is required",
+        message:
+          "At least one LLM provider is required: GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, ANTHROPIC_API_KEY, or SIE_API_KEY",
         path: ["OPENAI_API_KEY"],
       });
     }
@@ -81,6 +92,9 @@ export const env = {
   attioWorkspaceSlug: parsed.ATTIO_WORKSPACE_SLUG,
   openaiApiKey: parsed.OPENAI_API_KEY ?? "",
   groqApiKey: parsed.GROQ_API_KEY ?? "",
+  anthropicApiKey: parsed.ANTHROPIC_API_KEY ?? "",
+  geminiApiKey: parsed.GEMINI_API_KEY ?? "",
+  geminiModel: parsed.GEMINI_MODEL ?? "gemini-2.5-flash",
   tavilyApiKey: parsed.TAVILY_API_KEY ?? "",
   serperApiKey: parsed.SERPER_API_KEY ?? "",
   sieEndpoint: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",
@@ -88,6 +102,7 @@ export const env = {
   sieBaseUrl: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",
   sieRerankModel:
     parsed.SIE_RERANK_MODEL ?? "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  sieLlmModel: parsed.SIE_LLM_MODEL ?? "Qwen/Qwen3-4B-Instruct-2507",
   icpDescription:
     parsed.ICP_DESCRIPTION ??
     "B2B SaaS companies, 50-500 employees, US/EU, buying intent for CRM automation, VP Sales or RevOps leaders evaluating agentic CRM tools.",
