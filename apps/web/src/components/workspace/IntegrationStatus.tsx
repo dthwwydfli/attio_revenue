@@ -8,10 +8,26 @@ type Health = {
   ok?: boolean;
   attio?: boolean;
   tavily?: boolean;
+  serper?: boolean;
   gemini?: boolean;
+  openai?: boolean;
+  anthropic?: boolean;
   slng?: boolean;
-  sie?: string;
+  sie?: boolean;
+  n8n?: boolean;
 };
+
+const INTEGRATIONS: { key: keyof Health; label: string }[] = [
+  { key: "attio", label: "Attio" },
+  { key: "tavily", label: "Tavily" },
+  { key: "serper", label: "Serper" },
+  { key: "gemini", label: "Gemini" },
+  { key: "sie", label: "SIE" },
+  { key: "openai", label: "OpenAI" },
+  { key: "anthropic", label: "Anthropic" },
+  { key: "slng", label: "SLNG" },
+  { key: "n8n", label: "n8n" },
+];
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -56,7 +72,7 @@ export function IntegrationStatus() {
         className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400"
         role="alert"
       >
-        API offline. Start with <code className="text-red-300">pnpm dev</code>
+        API offline. Start with <code className="text-red-300">pnpm dev:api</code>
       </div>
     );
   }
@@ -75,11 +91,9 @@ export function IntegrationStatus() {
         Live integrations
       </p>
       <div className="flex flex-wrap gap-1.5">
-        <StatusBadge ok={Boolean(health.attio)} label="Attio" />
-        <StatusBadge ok={Boolean(health.tavily)} label="Enrichment" />
-        <StatusBadge ok={Boolean(health.gemini)} label="Gemini" />
-        <StatusBadge ok={Boolean(health.sie)} label="SIE" />
-        <StatusBadge ok={Boolean(health.slng)} label="SLNG" />
+        {INTEGRATIONS.map(({ key, label }) => (
+          <StatusBadge key={key} ok={Boolean(health[key])} label={label} />
+        ))}
       </div>
     </div>
   );
