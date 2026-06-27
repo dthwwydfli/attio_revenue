@@ -5,7 +5,7 @@ export default function SecurityPage() {
     <WorkspacePageContent maxWidth="lg" className="space-y-10">
       <header className="space-y-2 border-b border-white/5 pb-8 text-center">
         <h1 className="font-display text-2xl font-semibold tracking-tight md:text-[1.75rem]">
-          Security — Aikido
+          Security: Aikido
         </h1>
         <p className="text-sm text-muted">
           LeadLoop uses Aikido Security to scan dependencies and secrets on every pull request.
@@ -44,7 +44,7 @@ export default function SecurityPage() {
       <div className="glass-panel rounded-xl border-amber-400/30 bg-amber-400/5 p-5 text-sm md:p-6">
         <p className="font-medium text-amber-400">Demo tip</p>
         <p className="mt-1 text-muted">
-          Show the green Aikido check on your PR or the Aikido dashboard during the last 15 seconds
+          Show the Aikido check on your PR or the Aikido dashboard during the last 15 seconds
           of your pitch.
         </p>
       </div>

@@ -5,23 +5,24 @@ import { useState } from "react";
 import { DEMO_LEADS } from "@leadloop/shared";
 import { apiFetch } from "@/lib/api-client";
 import { StatusBanner } from "@/components/ui/StatusBanner";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { WorkspacePageContent } from "@/components/workspace/WorkspacePageContent";
 
 const REPLAY_SCENARIOS = [
   {
     scenario: "hot" as const,
     title: "Hot lead",
-    desc: "VP RevOps at B2B SaaS — voice + Attio writeback",
+    desc: "VP RevOps at B2B SaaS: voice and Attio writeback",
   },
   {
     scenario: "warm" as const,
     title: "Warm lead",
-    desc: "Head of Sales — email + task",
+    desc: "Head of Sales: email and task",
   },
   {
     scenario: "cold" as const,
     title: "Cold lead",
-    desc: "Small retail — nurture only",
+    desc: "Small retail: nurture only",
   },
 ];
 
@@ -125,9 +126,10 @@ export default function SubmitLeadPage() {
             >
               <p className="font-semibold">{title}</p>
               <p className="mt-1 text-sm text-muted">{desc}</p>
-              <p className="mt-2 text-xs text-accent">
-                {replayLoading === scenario ? "Running…" : "Replay →"}
-              </p>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs text-accent">
+                {replayLoading === scenario ? "Running…" : "Replay"}
+                {replayLoading !== scenario && <ArrowIcon className="h-3.5 w-3.5" />}
+              </span>
             </button>
           ))}
         </div>

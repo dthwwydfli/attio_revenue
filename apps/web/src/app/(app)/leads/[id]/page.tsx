@@ -39,7 +39,7 @@ export default async function LeadDetailPage({
 
       {run.enrichment && <EnrichmentCard enrichment={run.enrichment} />}
       {run.action && <GeneratedReplyCard action={run.action} />}
-      {run.slng && <SLNGCallStatus slng={run.slng} />}
+      {run.slng && <SLNGCallStatus slng={run.slng} leadId={run.id} />}
       <ActivityTimeline events={run.events} />
     </div>
   );
