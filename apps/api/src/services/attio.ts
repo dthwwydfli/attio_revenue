@@ -1,404 +1,223 @@
-import type { LeadInput, EnrichmentResult, ScoreResult, GeneratedAction } from "@leadloop/shared";
 import { splitName } from "@leadloop/shared";
-import { env, attioPersonUrl, attioCompanyUrl } from "../config.js";
+import { env } from "../lib/env.js";
+import { http, HttpError } from "../lib/http.js";
+import { createLogger } from "../lib/logger.js";
 
 const ATTIO_BASE = "https://api.attio.com/v2";
+const attioLogger = createLogger("attio");
 
-async function attioFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  if (!env.attioApiKey) {
-    throw new Error("ATTIO_API_KEY not configured");
+export class AttioApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly path: string,
+    public readonly responseBody: string,
+  ) {
+    super(`Attio ${path} failed (${status}): ${responseBody.slice(0, 300)}`);
+    this.name = "AttioApiError";
   }
-  return fetch(`${ATTIO_BASE}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${env.attioApiKey}`,
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
-  });
 }
 
-function extractRecordId(data: unknown): string | undefined {
-  if (!data || typeof data !== "object") return undefined;
+export interface PersonAttributeFields {
+  lead_score?: number;
+  lead_band?: string;
+  routing_status?: string;
+  agent_summary?: string;
+  source?: string;
+  last_agent_run_at?: string;
+  [key: string]: unknown;
+}
+
+type AttioFetchOptions = {
+  method?: string;
+  body?: unknown;
+  timeoutMs?: number;
+  retries?: number;
+};
+
+function extractRecordId(data: unknown): string {
+  if (!data || typeof data !== "object") {
+    throw new Error("Attio response missing record id");
+  }
   const d = data as Record<string, unknown>;
   const inner = d.data as Record<string, unknown> | undefined;
   const id = inner?.id as Record<string, unknown> | undefined;
-  return (id?.record_id as string) ?? (inner?.record_id as string);
-}
-
-export interface AttioUpsertResult {
-  personRecordId?: string;
-  companyRecordId?: string;
-  personUrl?: string;
-  companyUrl?: string;
-  skipped: boolean;
-  reason?: string;
-}
-
-export async function assertCompany(
-  companyName: string,
-  domain: string,
-): Promise<{ recordId?: string; skipped: boolean; reason?: string }> {
-  if (!env.attioApiKey) {
-    return { skipped: true, reason: "ATTIO_API_KEY not configured" };
+  const recordId = (id?.record_id as string) ?? (inner?.record_id as string);
+  if (!recordId) {
+    throw new Error("Attio response missing record id");
   }
+  return recordId;
+}
+
+function extractNoteId(data: unknown): string {
+  const json = data as { data?: { id?: { note_id?: string } } };
+  const noteId = json.data?.id?.note_id;
+  if (!noteId) {
+    throw new Error("Attio response missing note id");
+  }
+  return noteId;
+}
+
+function extractTaskId(data: unknown): string {
+  const json = data as { data?: { id?: { task_id?: string } } };
+  const taskId = json.data?.id?.task_id;
+  if (!taskId) {
+    throw new Error("Attio response missing task id");
+  }
+  return taskId;
+}
+
+function toAttioValues(fields: Record<string, unknown>): Record<string, unknown[]> {
+  const values: Record<string, unknown[]> = {};
+  for (const [key, val] of Object.entries(fields)) {
+    if (val === undefined) continue;
+    if (typeof val === "number" || typeof val === "string") {
+      values[key] = [{ value: val }];
+    } else {
+      values[key] = [val];
+    }
+  }
+  return values;
+}
+
+function noteTitleFromMarkdown(markdown: string): string {
+  return (
+    markdown
+      .split("\n")
+      .find((line) => line.trim().length > 0)
+      ?.replace(/^#+\s*/, "")
+      .slice(0, 120) ?? "Note"
+  );
+}
+
+export async function attioFetch<T = unknown>(
+  path: string,
+  options: AttioFetchOptions = {},
+): Promise<T> {
+  const { method = "GET", body, timeoutMs, retries } = options;
+
+  attioLogger.debug({ path, method }, "Attio request");
 
   try {
-    const res = await attioFetch("/objects/companies/records?matching_attribute=domains", {
-      method: "PUT",
-      body: JSON.stringify({
-        data: {
-          values: {
-            name: [{ value: companyName }],
-            domains: [{ domain }],
-          },
-        },
-      }),
+    const result = await http<T>(`${ATTIO_BASE}${path}`, {
+      method,
+      body,
+      timeoutMs,
+      retries,
+      logger: attioLogger,
+      headers: {
+        Authorization: `Bearer ${env.attioApiKey}`,
+      },
     });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return { skipped: true, reason: `Company assert failed: ${res.status} ${text}` };
-    }
-
-    const json = await res.json();
-    return { recordId: extractRecordId(json), skipped: false };
+    attioLogger.debug({ path, method }, "Attio response");
+    return result;
   } catch (err) {
-    return { skipped: true, reason: err instanceof Error ? err.message : "Company assert error" };
+    if (err instanceof HttpError) {
+      attioLogger.error({ path, status: err.status, body: err.body.slice(0, 500) }, "Attio error");
+      throw new AttioApiError(err.status, path, err.body);
+    }
+    attioLogger.error({ path, err: String(err) }, "Attio request failed");
+    throw err;
   }
+}
+
+export async function assertCompany(domain: string, name: string): Promise<{ companyId: string }> {
+  const json = await attioFetch("/objects/companies/records?matching_attribute=domains", {
+    method: "PUT",
+    body: {
+      data: {
+        values: {
+          name: [{ value: name }],
+          domains: [{ domain }],
+        },
+      },
+    },
+  });
+  return { companyId: extractRecordId(json) };
 }
 
 export async function assertPerson(
-  input: LeadInput,
-  companyRecordId?: string,
-): Promise<{ recordId?: string; skipped: boolean; reason?: string }> {
-  if (!env.attioApiKey) {
-    return { skipped: true, reason: "ATTIO_API_KEY not configured" };
-  }
+  email: string,
+  name: string,
+  companyId: string,
+): Promise<{ personId: string }> {
+  const { firstName, lastName } = splitName(name);
 
-  const { firstName, lastName } = splitName(input.name);
-
-  const values: Record<string, unknown> = {
-    email_addresses: [{ email_address: input.email }],
-    name: [{ first_name: firstName, last_name: lastName, full_name: input.name }],
-  };
-
-  if (input.role) {
-    values.job_title = [{ value: input.role }];
-  }
-
-  if (companyRecordId) {
-    values.company = [{ target_object: "companies", target_record_id: companyRecordId }];
-  }
-
-  try {
-    const res = await attioFetch("/objects/people/records?matching_attribute=email_addresses", {
-      method: "PUT",
-      body: JSON.stringify({ data: { values } }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return { skipped: true, reason: `Person assert failed: ${res.status} ${text}` };
-    }
-
-    const json = await res.json();
-    return { recordId: extractRecordId(json), skipped: false };
-  } catch (err) {
-    return { skipped: true, reason: err instanceof Error ? err.message : "Person assert error" };
-  }
-}
-
-export async function upsertLeadRecords(input: LeadInput, domain: string): Promise<AttioUpsertResult> {
-  const company = await assertCompany(input.company, domain);
-  const person = await assertPerson(input, company.recordId);
-
-  return {
-    personRecordId: person.recordId,
-    companyRecordId: company.recordId,
-    personUrl: person.recordId ? attioPersonUrl(person.recordId) : undefined,
-    companyUrl: company.recordId ? attioCompanyUrl(company.recordId) : undefined,
-    skipped: person.skipped && company.skipped,
-    reason: person.reason ?? company.reason,
-  };
+  const json = await attioFetch("/objects/people/records?matching_attribute=email_addresses", {
+    method: "PUT",
+    body: {
+      data: {
+        values: {
+          email_addresses: [{ email_address: email }],
+          name: [{ first_name: firstName, last_name: lastName, full_name: name }],
+          company: [{ target_object: "companies", target_record_id: companyId }],
+        },
+      },
+    },
+  });
+  return { personId: extractRecordId(json) };
 }
 
 export async function updatePersonAttributes(
-  personRecordId: string,
-  attrs: Record<string, unknown>,
-): Promise<boolean> {
-  if (!env.attioApiKey) return false;
+  personId: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const values = toAttioValues(fields);
+  if (Object.keys(values).length === 0) return;
 
-  const values: Record<string, unknown[]> = {};
-  for (const [key, val] of Object.entries(attrs)) {
-    if (typeof val === "number") {
-      values[key] = [{ value: val }];
-    } else if (typeof val === "string") {
-      values[key] = [{ value: val }];
-    }
-  }
-
-  const res = await attioFetch(`/objects/people/records/${personRecordId}`, {
+  await attioFetch(`/objects/people/records/${personId}`, {
     method: "PATCH",
-    body: JSON.stringify({ data: { values } }),
+    body: { data: { values } },
   });
-
-  return res.ok;
 }
 
 export async function updateCompanyAttributes(
-  companyRecordId: string,
-  attrs: Record<string, unknown>,
-): Promise<boolean> {
-  if (!env.attioApiKey) return false;
+  companyId: string,
+  fields: Record<string, unknown>,
+): Promise<void> {
+  const values = toAttioValues(fields);
+  if (Object.keys(values).length === 0) return;
 
-  const values: Record<string, unknown[]> = {};
-  for (const [key, val] of Object.entries(attrs)) {
-    if (typeof val === "string") {
-      values[key] = [{ value: val }];
-    }
-  }
-
-  const res = await attioFetch(`/objects/companies/records/${companyRecordId}`, {
+  await attioFetch(`/objects/companies/records/${companyId}`, {
     method: "PATCH",
-    body: JSON.stringify({ data: { values } }),
+    body: { data: { values } },
   });
-
-  return res.ok;
 }
 
-export async function createNote(
-  parentObject: "people" | "companies",
-  parentRecordId: string,
-  title: string,
-  content: string,
-): Promise<{ noteId?: string; skipped: boolean; reason?: string }> {
-  if (!env.attioApiKey) {
-    return { skipped: true, reason: "ATTIO_API_KEY not configured" };
-  }
-
-  const res = await attioFetch("/notes", {
+export async function createNote(personId: string, markdown: string): Promise<{ noteId: string }> {
+  const json = await attioFetch("/notes", {
     method: "POST",
-    body: JSON.stringify({
+    body: {
       data: {
-        parent_object: parentObject,
-        parent_record_id: parentRecordId,
-        title,
+        parent_object: "people",
+        parent_record_id: personId,
+        title: noteTitleFromMarkdown(markdown),
         format: "markdown",
-        content,
+        content: markdown,
       },
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    return { skipped: true, reason: `Note create failed: ${res.status} ${text}` };
-  }
-
-  const json = (await res.json()) as { data?: { id?: { note_id?: string } } };
-  return { noteId: json.data?.id?.note_id, skipped: false };
+  return { noteId: extractNoteId(json) };
 }
 
 export async function createTask(
-  personRecordId: string,
+  personId: string,
   title: string,
-  content: string,
-): Promise<{ taskId?: string; skipped: boolean; reason?: string }> {
-  if (!env.attioApiKey) {
-    return { skipped: true, reason: "ATTIO_API_KEY not configured" };
-  }
-
+  body: string,
+): Promise<{ taskId: string }> {
   const deadline = new Date();
   deadline.setDate(deadline.getDate() + 2);
 
-  const res = await attioFetch("/tasks", {
+  const json = await attioFetch("/tasks", {
     method: "POST",
-    body: JSON.stringify({
+    body: {
       data: {
-        content,
+        content: `${title}\n\n${body}`,
         format: "plaintext",
         deadline_at: deadline.toISOString(),
         is_completed: false,
-        linked_records: [
-          { target_object: "people", target_record_id: personRecordId },
-        ],
+        linked_records: [{ target_object: "people", target_record_id: personId }],
       },
-    }),
+    },
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    return { skipped: true, reason: `Task create failed: ${res.status} ${text}` };
-  }
-
-  const json = (await res.json()) as { data?: { id?: { task_id?: string } } };
-  return { taskId: json.data?.id?.task_id, skipped: false };
-}
-
-export async function writebackLead(
-  personRecordId: string | undefined,
-  companyRecordId: string | undefined,
-  input: LeadInput,
-  enrichment: EnrichmentResult,
-  score: ScoreResult,
-  action: GeneratedAction,
-  slngTranscript?: string,
-): Promise<{
-  noteId?: string;
-  taskId?: string;
-  skipped: boolean;
-  reason?: string;
-}> {
-  if (!personRecordId) {
-    return { skipped: true, reason: "No person record ID for writeback" };
-  }
-
-  await updatePersonAttributes(personRecordId, {
-    lead_score: score.score,
-    lead_band: score.band,
-    routing_status: "completed",
-    agent_summary: action.rationale.slice(0, 500),
-    source: input.source,
-  }).catch(() => false);
-
-  if (companyRecordId) {
-    await updateCompanyAttributes(companyRecordId, {
-      enrichment_summary: enrichment.description.slice(0, 500),
-      employee_band: enrichment.employeeBand,
-      industry_tag: enrichment.industry,
-    }).catch(() => false);
-  }
-
-  const noteContent = [
-    `## LeadLoop Agent Run`,
-    ``,
-    `**Band:** ${score.band} (${score.score}/100)`,
-    `**Score reasons:** ${score.rankReasons.join("; ")}`,
-    ``,
-    `### Enrichment`,
-    enrichment.description,
-    enrichment.news.length ? `\n**News:** ${enrichment.news.join(" | ")}` : "",
-    ``,
-    `### Generated Reply`,
-    `**Subject:** ${action.replySubject}`,
-    ``,
-    action.replyBody,
-    slngTranscript ? `\n### Voice Touchpoint\n${slngTranscript}` : "",
-  ].join("\n");
-
-  const note = await createNote("people", personRecordId, `LeadLoop: ${score.band.toUpperCase()} lead routed`, noteContent);
-
-  let taskId: string | undefined;
-  if (action.taskTitle && (score.band === "hot" || score.band === "warm" || score.band === "needs_review")) {
-    const task = await createTask(
-      personRecordId,
-      action.taskTitle,
-      action.taskBody ?? action.taskTitle,
-    );
-    taskId = task.taskId;
-  }
-
-  return { noteId: note.noteId, taskId, skipped: note.skipped, reason: note.reason };
-}
-
-export async function listObjectAttributes(objectSlug: string): Promise<unknown> {
-  const res = await attioFetch(`/objects/${objectSlug}/attributes`);
-  if (!res.ok) throw new Error(`Failed to list attributes: ${res.status}`);
-  return res.json();
-}
-
-export async function createSelectAttribute(
-  objectSlug: string,
-  apiSlug: string,
-  title: string,
-  options: string[],
-): Promise<unknown> {
-  const res = await attioFetch(`/objects/${objectSlug}/attributes`, {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        title,
-        description: `LeadLoop ${title}`,
-        api_slug: apiSlug,
-        type: "select",
-        is_required: false,
-        is_unique: false,
-        is_multiselect: false,
-        config: {
-          options: options.map((title) => ({ title })),
-        },
-      },
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    if (text.includes("already exists") || text.includes("slug_conflict")) {
-      return { skipped: true, reason: "Attribute already exists" };
-    }
-    throw new Error(`Create attribute failed: ${res.status} ${text}`);
-  }
-  return JSON.parse(text);
-}
-
-export async function createTextAttribute(
-  objectSlug: string,
-  apiSlug: string,
-  title: string,
-): Promise<unknown> {
-  const res = await attioFetch(`/objects/${objectSlug}/attributes`, {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        title,
-        description: `LeadLoop ${title}`,
-        api_slug: apiSlug,
-        type: "text",
-        is_required: false,
-        is_unique: false,
-        is_multiselect: false,
-        config: {},
-      },
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    if (text.includes("already exists") || text.includes("slug_conflict")) {
-      return { skipped: true, reason: "Attribute already exists" };
-    }
-    throw new Error(`Create attribute failed: ${res.status} ${text}`);
-  }
-  return JSON.parse(text);
-}
-
-export async function createNumberAttribute(
-  objectSlug: string,
-  apiSlug: string,
-  title: string,
-): Promise<unknown> {
-  const res = await attioFetch(`/objects/${objectSlug}/attributes`, {
-    method: "POST",
-    body: JSON.stringify({
-      data: {
-        title,
-        description: `LeadLoop ${title}`,
-        api_slug: apiSlug,
-        type: "number",
-        is_required: false,
-        is_unique: false,
-        is_multiselect: false,
-        config: {},
-      },
-    }),
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    if (text.includes("already exists") || text.includes("slug_conflict")) {
-      return { skipped: true, reason: "Attribute already exists" };
-    }
-    throw new Error(`Create attribute failed: ${res.status} ${text}`);
-  }
-  return JSON.parse(text);
+  return { taskId: extractTaskId(json) };
 }

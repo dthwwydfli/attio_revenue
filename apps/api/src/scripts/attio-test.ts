@@ -1,24 +1,30 @@
-import "../config.js";
+import "../lib/env.js";
 import { DEMO_LEADS } from "@leadloop/shared";
-import { upsertLeadRecords, createNote } from "../services/attio.js";
+import { assertCompany, assertPerson, createNote } from "../services/attio.js";
+import { attioPersonUrl, attioCompanyUrl } from "../lib/env.js";
 
 async function main() {
-  const lead = DEMO_LEADS.hot;
-  console.log("Testing Attio assert with demo hot lead...\n");
+  const args = process.argv.slice(2).filter((arg) => arg !== "--");
+  const name = args[0] ?? `Jordan Lee ${Date.now()}`;
+  const email = args[1] ?? `jordan.lee.${Date.now()}@acmecorp.io`;
+  const company = args[2] ?? DEMO_LEADS.hot.company;
+  const domain = args[3] ?? DEMO_LEADS.hot.domain ?? "acmecorp.io";
 
-  const domain = lead.domain ?? "acmecorp.io";
-  const result = await upsertLeadRecords(lead, domain);
-  console.log("Upsert result:", JSON.stringify(result, null, 2));
+  console.log(`Testing Attio assert for ${name} (${email})...\n`);
 
-  if (result.personRecordId) {
-    const note = await createNote(
-      "people",
-      result.personRecordId,
-      "LeadLoop Test Note",
-      "This is a test note from LeadLoop attio:test script.",
-    );
-    console.log("Note result:", JSON.stringify(note, null, 2));
-  }
+  const { companyId } = await assertCompany(domain, company);
+  console.log("Company ID:", companyId);
+  console.log("Company URL:", attioCompanyUrl(companyId));
+
+  const { personId } = await assertPerson(email, name, companyId);
+  console.log("Person ID:", personId);
+  console.log("Person URL:", attioPersonUrl(personId));
+
+  const { noteId } = await createNote(
+    personId,
+    `## LeadLoop Test Note\n\nTest run for **${name}** (${email}).`,
+  );
+  console.log("Note ID:", noteId);
 
   console.log("\nAttio test complete.");
 }

@@ -5,10 +5,22 @@ import type {
   AuditEvent,
   ProcessLeadResponse,
   PipelineStep,
+  EnrichmentResult,
+  ScoreResult,
+  GeneratedAction,
 } from "@leadloop/shared";
 import { inferDomain } from "@leadloop/shared";
 import { saveRun, updateRun, appendEvent, getRun } from "./store.js";
-import { upsertLeadRecords, writebackLead } from "./services/attio.js";
+import { attioPersonUrl, attioCompanyUrl } from "./lib/env.js";
+import {
+  assertCompany,
+  assertPerson,
+  updatePersonAttributes,
+  updateCompanyAttributes,
+  createNote,
+  createTask,
+  AttioApiError,
+} from "./services/attio.js";
 import { enrichLead, buildProfileText } from "./services/enrich.js";
 import { scoreLead } from "./services/superlinked.js";
 import { generateAction } from "./services/llm.js";
@@ -22,6 +34,113 @@ function audit(step: PipelineStep, status: AuditEvent["status"], message?: strin
     durationMs,
     timestamp: new Date().toISOString(),
   };
+}
+
+function attioErrorMessage(err: unknown): string {
+  if (err instanceof AttioApiError) return err.message;
+  return err instanceof Error ? err.message : "Attio error";
+}
+
+async function upsertAttioRecords(
+  input: LeadInput,
+  domain: string,
+): Promise<{
+  personRecordId?: string;
+  companyRecordId?: string;
+  personUrl?: string;
+  companyUrl?: string;
+  skipped: boolean;
+  reason?: string;
+}> {
+  try {
+    const { companyId } = await assertCompany(domain, input.company);
+    const { personId } = await assertPerson(input.email, input.name, companyId);
+
+    if (input.role) {
+      await updatePersonAttributes(personId, { job_title: input.role });
+    }
+
+    return {
+      personRecordId: personId,
+      companyRecordId: companyId,
+      personUrl: attioPersonUrl(personId),
+      companyUrl: attioCompanyUrl(companyId),
+      skipped: false,
+    };
+  } catch (err) {
+    return { skipped: true, reason: attioErrorMessage(err) };
+  }
+}
+
+async function writebackToAttio(
+  personRecordId: string | undefined,
+  companyRecordId: string | undefined,
+  input: LeadInput,
+  enrichment: EnrichmentResult,
+  score: ScoreResult,
+  action: GeneratedAction,
+  slngTranscript?: string,
+): Promise<{
+  noteId?: string;
+  taskId?: string;
+  skipped: boolean;
+  reason?: string;
+}> {
+  if (!personRecordId) {
+    return { skipped: true, reason: "No person record ID for writeback" };
+  }
+
+  try {
+    await updatePersonAttributes(personRecordId, {
+      lead_score: score.score,
+      lead_band: score.band,
+      routing_status: "completed",
+      agent_summary: action.rationale.slice(0, 500),
+      source: input.source,
+      last_agent_run_at: new Date().toISOString(),
+    });
+
+    if (companyRecordId) {
+      await updateCompanyAttributes(companyRecordId, {
+        enrichment_summary: enrichment.description.slice(0, 500),
+        employee_band: enrichment.employeeBand,
+        industry_tag: enrichment.industry,
+      });
+    }
+
+    const noteContent = [
+      `## LeadLoop Agent Run`,
+      ``,
+      `**Band:** ${score.band} (${score.score}/100)`,
+      `**Score reasons:** ${score.rankReasons.join("; ")}`,
+      ``,
+      `### Enrichment`,
+      enrichment.description,
+      enrichment.news.length ? `\n**News:** ${enrichment.news.join(" | ")}` : "",
+      ``,
+      `### Generated Reply`,
+      `**Subject:** ${action.replySubject}`,
+      ``,
+      action.replyBody,
+      slngTranscript ? `\n### Voice Touchpoint\n${slngTranscript}` : "",
+    ].join("\n");
+
+    const { noteId } = await createNote(personRecordId, noteContent);
+
+    let taskId: string | undefined;
+    if (action.taskTitle && (score.band === "hot" || score.band === "warm" || score.band === "needs_review")) {
+      const task = await createTask(
+        personRecordId,
+        action.taskTitle,
+        action.taskBody ?? action.taskTitle,
+      );
+      taskId = task.taskId;
+    }
+
+    return { noteId, taskId, skipped: false };
+  } catch (err) {
+    return { skipped: true, reason: attioErrorMessage(err) };
+  }
 }
 
 export async function processLead(input: LeadInput): Promise<ProcessLeadResponse> {
@@ -46,7 +165,7 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     updateRun(id, { currentStep: "attio_upsert" });
     appendEvent(id, audit("attio_upsert", "started"));
     const attioStart = Date.now();
-    const attioUpsert = await upsertLeadRecords(input, domain);
+    const attioUpsert = await upsertAttioRecords(input, domain);
     appendEvent(
       id,
       audit(
@@ -116,7 +235,7 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     appendEvent(id, audit("attio_writeback", "started"));
     const writebackStart = Date.now();
     const existingRun = getRun(id)!;
-    const writeback = await writebackLead(
+    const writeback = await writebackToAttio(
       existingRun.attio?.personRecordId,
       existingRun.attio?.companyRecordId,
       input,
