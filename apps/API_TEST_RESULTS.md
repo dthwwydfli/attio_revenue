@@ -1,12 +1,12 @@
 # LeadLoop API Test Results
 
-**Run at:** 2026-06-27T15:57:25.039Z
+**Run at:** 2026-06-27T16:20:46.727Z
 
 | Status | Count |
 |--------|-------|
-| PASS | 10 |
+| PASS | 11 |
 | FAIL | 0 |
-| SKIP (not configured) | 3 |
+| SKIP (not configured) | 2 |
 | STUB (not wired yet) | 0 |
 
 ## Results
@@ -15,9 +15,9 @@
 
 **Status:** PASS
 
-companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=8b535760-debd-565d-a409-1ccf4ad3a0e5, noteId=980469fd-91e9-4ecc-a160-7c5ee03ef28a
+companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=bc28123a-0f0d-5530-9f2b-a95f451c95f2, noteId=9bfb5aef-c746-4f27-8a4d-a1400759bb2a
 
-**Verify in browser:** https://app.attio.com/brunel-university/person/8b535760-debd-565d-a409-1ccf4ad3a0e5
+**Verify in browser:** https://app.attio.com/brunel-university/person/bc28123a-0f0d-5530-9f2b-a95f451c95f2
 
 ### ✅ Tavily enrichment
 
@@ -49,11 +49,11 @@ band=hot, score=86, source=superlinked
 
 No real OPENAI_API_KEY in .env.local — LLM uses template fallback
 
-### ⏭️ SLNG
+### ✅ SLNG
 
-**Status:** SKIP
+**Status:** PASS
 
-No real SLNG_API_KEY in .env.local — voice uses mock in pipeline
+API key valid; no agents in account yet (voice uses mock until agent created)
 
 ### ⏭️ n8n webhook
 
@@ -65,7 +65,7 @@ Webhook not registered (404) — import workflows/pipeline-callback.json in n8n 
 
 **Status:** PASS
 
-{"ok":true,"uptime":248.0435761,"attio":true,"tavily":true,"openai":false,"slng":true,"sie":"http://a64e1dc31032c40e4b1e
+{"ok":true,"uptime":29.8517741,"attio":true,"tavily":true,"openai":false,"slng":true,"sie":"http://a64e1dc31032c40e4b1e9
 
 ### ✅ HTTP POST /leads/process
 

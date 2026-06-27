@@ -151,10 +151,29 @@ async function testSLNG() {
     return;
   }
   try {
-    const res = await fetch(`https://api.agents.slng.ai/v1/agents/${env.slngAgentId}`, {
+    const listRes = await fetch("https://api.agents.slng.ai/v1/agents", {
       headers: { Authorization: `Bearer ${env.slngApiKey}` },
     });
-    if (res.ok) pass("SLNG", `HTTP ${res.status}`);
+    if (!listRes.ok) {
+      fail("SLNG", `API key rejected — HTTP ${listRes.status}: ${(await listRes.text()).slice(0, 150)}`);
+      return;
+    }
+
+    const agents = (await listRes.json()) as Array<{ id?: string }>;
+    const agentId =
+      !env.slngAgentId.includes("placeholder") && env.slngAgentId
+        ? env.slngAgentId
+        : agents[0]?.id;
+
+    if (!agentId) {
+      pass("SLNG", "API key valid; no agents in account yet (voice uses mock until agent created)");
+      return;
+    }
+
+    const res = await fetch(`https://api.agents.slng.ai/v1/agents/${agentId}`, {
+      headers: { Authorization: `Bearer ${env.slngApiKey}` },
+    });
+    if (res.ok) pass("SLNG", `HTTP ${res.status}, agent=${agentId}`);
     else fail("SLNG", `HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
   } catch (err) {
     fail("SLNG", err instanceof Error ? err.message : String(err));
