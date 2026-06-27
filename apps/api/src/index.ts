@@ -1,11 +1,11 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./lib/env.js";
-import { rootLogger } from "./lib/logger.js";
+import { loggerOptions, rootLogger } from "./lib/logger.js";
 import { registerRoutes } from "./routes/index.js";
 
 const app = Fastify({
-  logger: rootLogger,
+  logger: loggerOptions,
 });
 
 await app.register(cors, {

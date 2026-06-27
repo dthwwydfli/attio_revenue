@@ -45,13 +45,23 @@ export const LeadInputSchema = z.object({
 });
 export type LeadInput = z.infer<typeof LeadInputSchema>;
 
+export const EnrichmentSourceSchema = z.enum([
+  "tavily",
+  "serper",
+  "fixture",
+  "placeholder",
+]);
+export type EnrichmentSource = z.infer<typeof EnrichmentSourceSchema>;
+
 export const EnrichmentResultSchema = z.object({
-  description: z.string(),
-  industry: z.string(),
-  employeeBand: z.string(),
-  domain: z.string(),
+  domain: z.string().nullable(),
+  description: z.string().nullable(),
+  industry: z.string().nullable(),
+  employee_band: z.string().nullable(),
+  website_url: z.string().nullable(),
+  linkedin_url: z.string().nullable(),
   news: z.array(z.string()),
-  source: z.enum(["tavily", "fixture", "mock"]),
+  source: EnrichmentSourceSchema,
 });
 export type EnrichmentResult = z.infer<typeof EnrichmentResultSchema>;
 
@@ -176,37 +186,6 @@ export const DEMO_LEADS: Record<DemoScenario, LeadInput> = {
   },
 };
 
-export const ENRICHMENT_FIXTURES: Record<string, EnrichmentResult> = {
-  "acmecorp.io": {
-    description:
-      "Acme Corp is a B2B SaaS company providing workflow automation for revenue teams.",
-    industry: "B2B SaaS",
-    employeeBand: "200-500",
-    domain: "acmecorp.io",
-    news: [
-      "Acme Corp raised Series B to expand enterprise CRM automation.",
-      "Launched AI-powered sales routing module in 2025.",
-    ],
-    source: "fixture",
-  },
-  "midmarket.io": {
-    description:
-      "MidMarket Solutions sells sales enablement software to SMB sales teams.",
-    industry: "Sales Tech",
-    employeeBand: "50-100",
-    domain: "midmarket.io",
-    news: ["MidMarket Solutions hiring SDRs for inbound pipeline."],
-    source: "fixture",
-  },
-  "localshop.com": {
-    description: "Local Shop Co is a small retail business with one storefront.",
-    industry: "Retail",
-    employeeBand: "1-10",
-    domain: "localshop.com",
-    news: [],
-    source: "fixture",
-  },
-};
 
 export function scoreToBand(normalizedScore: number): LeadBand {
   if (normalizedScore >= 0.75) return "hot";
