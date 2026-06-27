@@ -84,13 +84,13 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
         >
           {expanded ? (
             <>
-              <ArrowIcon className="h-3.5 w-3.5 rotate-180" />
               Show less
+              <ArrowIcon className="h-3.5 w-3.5 rotate-180" />
             </>
           ) : (
             <>
-              <ArrowIcon className="h-3.5 w-3.5" />
               View full draft
+              <ArrowIcon className="h-3.5 w-3.5" />
             </>
           )}
         </button>
