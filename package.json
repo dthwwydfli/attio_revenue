@@ -1,0 +1,19 @@
+{
+  "name": "leadloop",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm run --parallel dev",
+    "dev:api": "pnpm --filter @leadloop/api dev",
+    "dev:web": "pnpm --filter @leadloop/web dev",
+    "build": "pnpm run --filter @leadloop/shared build && pnpm run --parallel build",
+    "typecheck": "pnpm run --parallel typecheck",
+    "lint": "pnpm run --parallel lint"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  }
+}
