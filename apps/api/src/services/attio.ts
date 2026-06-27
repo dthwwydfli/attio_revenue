@@ -120,6 +120,128 @@ export async function attioFetch<T = unknown>(
   }
 }
 
+function extractQueryRecordId(data: unknown): string | null {
+  const json = data as { data?: Array<{ id?: { record_id?: string } }> };
+  return json.data?.[0]?.id?.record_id ?? null;
+}
+
+function readAttioValue(values: Record<string, unknown>, key: string): string | undefined {
+  const arr = values[key];
+  if (!Array.isArray(arr) || arr.length === 0) return undefined;
+  const first = arr[0];
+  if (!first || typeof first !== "object") return undefined;
+  const obj = first as Record<string, unknown>;
+  if (typeof obj.value === "string") return obj.value;
+  if (typeof obj.full_name === "string") return obj.full_name;
+  if (typeof obj.email_address === "string") return obj.email_address;
+  if (typeof obj.phone_number === "string") return obj.phone_number;
+  if (typeof obj.original_phone_number === "string") return obj.original_phone_number;
+  return undefined;
+}
+
+function readAttioCompanyId(values: Record<string, unknown>): string | undefined {
+  const arr = values.company;
+  if (!Array.isArray(arr) || arr.length === 0) return undefined;
+  const first = arr[0];
+  if (!first || typeof first !== "object") return undefined;
+  const target = (first as Record<string, unknown>).target_record_id;
+  return typeof target === "string" ? target : undefined;
+}
+
+export interface AttioPersonContext {
+  personId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  companyId?: string;
+  companyName?: string;
+}
+
+export async function findPersonByEmail(email: string): Promise<string | null> {
+  try {
+    const json = await attioFetch("/objects/people/records/query", {
+      method: "POST",
+      body: {
+        filter: { email_addresses: email.trim() },
+        limit: 1,
+      },
+    });
+    return extractQueryRecordId(json);
+  } catch (err) {
+    attioLogger.warn(
+      { err: err instanceof Error ? err.message : String(err), email },
+      "findPersonByEmail failed",
+    );
+    return null;
+  }
+}
+
+export async function findPersonByPhone(phone: string): Promise<string | null> {
+  const normalized = phone.trim();
+  if (!normalized) return null;
+
+  try {
+    const json = await attioFetch("/objects/people/records/query", {
+      method: "POST",
+      body: {
+        filter: { phone_numbers: normalized },
+        limit: 1,
+      },
+    });
+    return extractQueryRecordId(json);
+  } catch (err) {
+    attioLogger.warn(
+      { err: err instanceof Error ? err.message : String(err), phone: normalized },
+      "findPersonByPhone failed",
+    );
+    return null;
+  }
+}
+
+export async function fetchPersonContext(personId: string): Promise<AttioPersonContext | null> {
+  try {
+    const json = await attioFetch(`/objects/people/records/${personId}`);
+    const data = (json as { data?: { values?: Record<string, unknown> } }).data;
+    const values = data?.values;
+    if (!values) return null;
+
+    const name = readAttioValue(values, "name") ?? "Unknown Lead";
+    const email = readAttioValue(values, "email_addresses");
+    const phone = readAttioValue(values, "phone_numbers");
+    const companyId = readAttioCompanyId(values);
+
+    let companyName: string | undefined;
+    if (companyId) {
+      try {
+        const companyJson = await attioFetch(`/objects/companies/records/${companyId}`);
+        const companyValues = (companyJson as { data?: { values?: Record<string, unknown> } }).data
+          ?.values;
+        companyName = companyValues ? readAttioValue(companyValues, "name") : undefined;
+      } catch (err) {
+        attioLogger.warn(
+          { err: err instanceof Error ? err.message : String(err), companyId },
+          "Failed to fetch linked company for person",
+        );
+      }
+    }
+
+    return {
+      personId,
+      name,
+      email,
+      phone,
+      companyId,
+      companyName,
+    };
+  } catch (err) {
+    attioLogger.warn(
+      { err: err instanceof Error ? err.message : String(err), personId },
+      "fetchPersonContext failed",
+    );
+    return null;
+  }
+}
+
 export async function assertCompany(domain: string, name: string): Promise<{ companyId: string }> {
   const json = await attioFetch("/objects/companies/records?matching_attribute=domains", {
     method: "PUT",
@@ -183,14 +305,18 @@ export async function updateCompanyAttributes(
   });
 }
 
-export async function createNote(personId: string, markdown: string): Promise<{ noteId: string }> {
+export async function createNote(
+  personId: string,
+  markdown: string,
+  title?: string,
+): Promise<{ noteId: string }> {
   const json = await attioFetch("/notes", {
     method: "POST",
     body: {
       data: {
         parent_object: "people",
         parent_record_id: personId,
-        title: noteTitleFromMarkdown(markdown),
+        title: title ?? noteTitleFromMarkdown(markdown),
         format: "markdown",
         content: markdown,
       },
@@ -203,9 +329,9 @@ export async function createTask(
   personId: string,
   title: string,
   body: string,
+  deadlineAt?: Date,
 ): Promise<{ taskId: string }> {
-  const deadline = new Date();
-  deadline.setDate(deadline.getDate() + 2);
+  const deadline = deadlineAt ?? new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
 
   const json = await attioFetch("/tasks", {
     method: "POST",
@@ -215,6 +341,7 @@ export async function createTask(
         format: "plaintext",
         deadline_at: deadline.toISOString(),
         is_completed: false,
+        assignees: [],
         linked_records: [{ target_object: "people", target_record_id: personId }],
       },
     },

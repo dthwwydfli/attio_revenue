@@ -20,7 +20,6 @@ const EnvSchema = z
     GEMINI_API_KEY: z.string().optional(),
     GEMINI_MODEL: z.string().optional(),
     TAVILY_API_KEY: z.string().optional(),
-    SERPER_API_KEY: z.string().optional(),
     SIE_BASE_URL: z.string().url("SIE_BASE_URL must be a valid URL").optional(),
     SIE_ENDPOINT: z.string().url("SIE_ENDPOINT must be a valid URL").optional(),
     SIE_API_KEY: z.string().optional(),
@@ -50,13 +49,6 @@ const EnvSchema = z
         message:
           "At least one LLM provider is required: GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, ANTHROPIC_API_KEY, or SIE_API_KEY",
         path: ["OPENAI_API_KEY"],
-      });
-    }
-    if (!data.TAVILY_API_KEY && !data.SERPER_API_KEY) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Either TAVILY_API_KEY or SERPER_API_KEY is required",
-        path: ["TAVILY_API_KEY"],
       });
     }
     if (!data.SIE_BASE_URL && !data.SIE_ENDPOINT) {
@@ -96,7 +88,6 @@ export const env = {
   geminiApiKey: parsed.GEMINI_API_KEY ?? "",
   geminiModel: parsed.GEMINI_MODEL ?? "gemini-3.5-flash",
   tavilyApiKey: parsed.TAVILY_API_KEY ?? "",
-  serperApiKey: parsed.SERPER_API_KEY ?? "",
   sieEndpoint: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",
   sieApiKey: parsed.SIE_API_KEY ?? "",
   sieBaseUrl: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "http://localhost:8080",

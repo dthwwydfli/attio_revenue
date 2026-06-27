@@ -8,9 +8,7 @@ import {
 import { env } from "../lib/env.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
-import { handleSlngWebhook } from "../services/slng.js";
-import { appendEvent, updateRun } from "../store.js";
-import { createNote } from "../services/attio.js";
+import { slngWebhookRoute } from "./webhooks/slng.js";
 import type { HealthResponse } from "../types/global.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
@@ -62,6 +60,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/leads", async () => listRuns());
 
+  app.post("/webhooks/slng", slngWebhookRoute);
+
   app.post<{ Params: { scenario: string } }>(
     "/demo/replay/:scenario",
     async (request, reply) => {
@@ -74,40 +74,4 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       return { ...result, scenario: parsed.data };
     },
   );
-
-  app.post("/webhooks/slng", async (request, reply) => {
-    const payload = request.body as {
-      call_id?: string;
-      summary?: string;
-      transcript?: string;
-      lead_run_id?: string;
-    };
-
-    const result = handleSlngWebhook(payload);
-
-    if (payload.lead_run_id) {
-      const run = getRun(payload.lead_run_id);
-      if (run?.attio?.personRecordId && result.transcriptSnippet) {
-        await createNote(
-          run.attio.personRecordId,
-          `## SLNG Voice Callback\n\n${result.transcriptSnippet}`,
-        ).catch(() => undefined);
-      }
-      updateRun(payload.lead_run_id, {
-        slng: {
-          status: result.status,
-          callId: result.callId,
-          transcriptSnippet: result.transcriptSnippet,
-        },
-      });
-      appendEvent(payload.lead_run_id, {
-        step: "voice",
-        status: "completed",
-        message: "SLNG webhook received",
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return { ok: true, ...result };
-  });
 }
