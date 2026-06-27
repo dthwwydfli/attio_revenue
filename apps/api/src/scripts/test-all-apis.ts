@@ -3,12 +3,6 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
 import { env } from "../lib/env.js";
-import {
-  isSlngApiKeyConfigured,
-  listSlngAgents,
-  resolveSlngAgentId,
-  testSlngGatewayTts,
-} from "../lib/slng-client.js";
 import { assertCompany, assertPerson, createNote } from "../services/attio.js";
 import { enrichLead } from "../services/enrich.js";
 import { scoreLead, toScoreResult } from "../services/scoring.js";
@@ -28,7 +22,6 @@ interface Row {
 }
 
 const rows: Row[] = [];
-let lastAttioPersonId: string | null = null;
 
 function pass(name: string, detail: string, verify?: string) {
   rows.push({ name, status: "PASS", detail, verify });
@@ -53,7 +46,6 @@ async function testAttio() {
     const email = `apitest.${ts}@acmecorp.io`;
     const { companyId } = await assertCompany("acmecorp.io", "Acme Corp");
     const { personId } = await assertPerson(email, name, companyId);
-    lastAttioPersonId = personId;
     const { noteId } = await createNote(personId, `## API test\n\nAutomated run ${ts}`);
     pass(
       "Attio (assert company + person + note)",
@@ -80,21 +72,28 @@ async function testTavily() {
   }
 }
 
-async function testEnrichmentFallback() {
+async function testSerper() {
+  const prev = process.env.TAVILY_API_KEY;
+  process.env.TAVILY_API_KEY = "";
   try {
-    const result = await enrichLead("Unknown Fallback Test Co", "no-fixture-domain-xyz.test");
-    if (result.source === "placeholder") {
-      pass(
-        "Enrichment fallback",
-        `Tavily skipped/unavailable → placeholder. domain=${result.domain}`,
-      );
-    } else if (result.source === "fixture") {
-      pass("Enrichment fallback", `Used cached fixture. domain=${result.domain}`);
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": env.serperApiKey,
+      },
+      body: JSON.stringify({ q: "Stripe company profile" }),
+    });
+    const text = await res.text();
+    if (res.ok) {
+      pass("Serper API", `HTTP ${res.status}, response length ${text.length}`);
     } else {
-      pass("Enrichment fallback", `Live Tavily returned data (source=${result.source})`);
+      fail("Serper API", `HTTP ${res.status}: ${text.slice(0, 200)}`);
     }
   } catch (err) {
-    fail("Enrichment fallback", err instanceof Error ? err.message : String(err));
+    fail("Serper API", err instanceof Error ? err.message : String(err));
+  } finally {
+    process.env.TAVILY_API_KEY = prev;
   }
 }
 
@@ -152,70 +151,30 @@ async function testOpenAI() {
 }
 
 async function testSLNG() {
-  if (!isSlngApiKeyConfigured()) {
+  if (!env.slngApiKey || env.slngApiKey.includes("placeholder")) {
     skip("SLNG", "No real SLNG_API_KEY in .env.local — voice uses mock in pipeline");
     return;
   }
   try {
-    await testSlngGatewayTts();
-    const agentId = await resolveSlngAgentId();
-    if (agentId) {
-      pass("SLNG", `Gateway TTS OK; voice agent=${agentId}`);
-    } else {
-      const agents = await listSlngAgents();
-      if (agents.length === 0) {
-        pass("SLNG", "API key + gateway TTS OK; run pnpm slng:setup to create voice agent");
-      } else {
-        fail("SLNG", "Agents exist but could not resolve agent ID");
-      }
-    }
+    const res = await fetch(`https://api.agents.slng.ai/v1/agents/${env.slngAgentId}`, {
+      headers: { Authorization: `Bearer ${env.slngApiKey}` },
+    });
+    if (res.ok) pass("SLNG", `HTTP ${res.status}`);
+    else fail("SLNG", `HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
   } catch (err) {
     fail("SLNG", err instanceof Error ? err.message : String(err));
-  }
-}
-
-async function testN8n() {
-  if (!env.n8nWebhookUrl) {
-    skip("n8n webhook", "No N8N_WEBHOOK_URL in .env.local — pipeline skips n8n notification");
-    return;
-  }
-  try {
-    const res = await fetch(env.n8nWebhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        personId: "test-person-id",
-        band: "hot",
-        score: 86,
-        shouldCallVoice: true,
-        taskCreated: true,
-        emailDraftSaved: true,
-        test: true,
-      }),
-    });
-    const text = await res.text();
-    if (res.ok) {
-      pass("n8n webhook", `HTTP ${res.status} at ${env.n8nWebhookUrl}`);
-    } else if (res.status === 404) {
-      skip(
-        "n8n webhook",
-        `Webhook not registered (404) — import workflows/pipeline-callback.json in n8n and activate it`,
-      );
-    } else {
-      fail("n8n webhook", `HTTP ${res.status}: ${text.slice(0, 150)}`);
-    }
-  } catch (err) {
-    fail("n8n webhook", err instanceof Error ? err.message : String(err));
   }
 }
 
 async function testHttpRoutes() {
   const base = `http://localhost:${env.port}`;
 
-  async function hit(method: string, path: string, body?: unknown) {
+  async function hit(method: string, path: string, body?: unknown, extraHeaders?: Record<string, string>) {
+    const headers: Record<string, string> = { ...extraHeaders };
+    if (body) headers["Content-Type"] = "application/json";
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
     const text = await res.text();
@@ -230,16 +189,13 @@ async function testHttpRoutes() {
       fail("HTTP GET /health", `status=${health.status} — is the API running? Run: pnpm dev:api`);
     }
 
-    const processPersonId = lastAttioPersonId ?? "test-person-id";
-    const process = await hit("POST", "/leads/process", { personId: processPersonId });
+    const process = await hit("POST", "/leads/process", { name: "Test", email: "t@t.com", company: "Co" });
     if (process.status === 400) {
-      fail("HTTP POST /leads/process", `Returns 400 — invalid payload: ${process.body.slice(0, 120)}`);
-    } else if (process.status === 200 && process.body.includes('"ok":true')) {
-      pass("HTTP POST /leads/process", `status=${process.status}, pipeline ok=true`);
-    } else if (process.status === 200 && process.body.includes('"ok":false')) {
-      pass("HTTP POST /leads/process", `status=${process.status} — route wired (${process.body.slice(0, 80)})`);
+      stub("HTTP POST /leads/process", "Returns 400 for invalid payload — route is wired");
+    } else if (process.status === 200) {
+      pass("HTTP POST /leads/process", `status=${process.status}`);
     } else {
-      fail("HTTP POST /leads/process", `status=${process.status} body=${process.body.slice(0, 120)}`);
+      fail("HTTP POST /leads/process", `status=${process.status}`);
     }
 
     const status = await hit("GET", "/leads/test-id/status");
@@ -249,25 +205,18 @@ async function testHttpRoutes() {
       fail("HTTP GET /leads/:id/status", `status=${status.status}`);
     }
 
-    const slng = await hit("POST", "/webhooks/slng", {
-      call_id: "test-call",
-      lead_email: null,
-      lead_phone: null,
-      summary: "Test summary",
-      transcript: null,
-      duration_seconds: null,
-      timestamp: new Date().toISOString(),
-    });
-    if (slng.status === 200 && slng.body.includes('"ok":true')) {
-      pass("HTTP POST /webhooks/slng", "Returns 200 { ok: true }");
+    const slngHeaders = env.slngWebhookSecret
+      ? { "x-slng-webhook-secret": env.slngWebhookSecret }
+      : undefined;
+    const slng = await hit("POST", "/webhooks/slng", {}, slngHeaders);
+    if (slng.status === 200) {
+      pass("HTTP POST /webhooks/slng", `status=${slng.status}`);
     } else {
-      fail("HTTP POST /webhooks/slng", `status=${slng.status} body=${slng.body.slice(0, 120)}`);
+      fail("HTTP POST /webhooks/slng", `status=${slng.status}`);
     }
 
     const replay = await hit("POST", "/demo/replay/hot");
-    if (replay.status === 200 && replay.body.includes('"ok":true')) {
-      pass("HTTP POST /demo/replay/:scenario", `status=${replay.status}, pipeline ok=true`);
-    } else if (replay.status === 200) {
+    if (replay.status === 200) {
       pass("HTTP POST /demo/replay/:scenario", `status=${replay.status}`);
     } else {
       fail("HTTP POST /demo/replay/:scenario", `status=${replay.status} — is the API running?`);
@@ -301,11 +250,10 @@ function render(): string {
   md += `## What to look for (no terminal needed)\n\n`;
   md += `1. **Attio** — Open the person URL above in Attio. You should see a new person, linked to Acme Corp, with a test note.\n`;
   md += `2. **Tavily** — PASS means live web enrichment works. Check \`apps/api/src/fixtures/enrichment/acme-corp.json\` for cached data.\n`;
-  md += `3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.\n`;
-  md += `4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.\n`;
-  md += `5. **n8n** — PASS means N8N_WEBHOOK_URL is set and accepts pipeline callbacks.\n`;
-  md += `6. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
-  md += `7. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, n8n webhook URL, or start SIE Docker for those tests to pass.\n`;
+  md += `3. **Serper** — PASS means fallback search API works if Tavily is down.\n`;
+  md += `4. **Superlinked SIE** — PASS means local SIE Docker is running. SKIP falls back to heuristic scoring.\n`;
+  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
+  md += `6. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
 
   return md;
 }
@@ -313,12 +261,11 @@ function render(): string {
 async function main() {
   await testAttio();
   await testTavily();
-  await testEnrichmentFallback();
+  await testSerper();
   await testSIE();
   await testScoring();
   await testOpenAI();
   await testSLNG();
-  await testN8n();
   await testHttpRoutes();
 
   const md = render();

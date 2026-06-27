@@ -17,9 +17,26 @@ const SCENARIO_FIXTURES: Record<string, string> = {
   "localshop.com": "cold",
 };
 
+const DEMO_DOMAINS = new Set(Object.keys(SCENARIO_FIXTURES));
+
+export function isDemoDomain(domain?: string | null): boolean {
+  const normalized = normalizeDomain(domain);
+  return normalized ? DEMO_DOMAINS.has(normalized) : false;
+}
+
+export function expectedDemoBand(domain?: string | null): "hot" | "warm" | "cold" | null {
+  const normalized = normalizeDomain(domain);
+  if (!normalized || !DEMO_DOMAINS.has(normalized)) return null;
+  return SCENARIO_FIXTURES[normalized] as "hot" | "warm" | "cold";
+}
+
 interface TavilyResponse {
   answer?: string;
   results?: Array<{ title?: string; content?: string; url?: string }>;
+}
+
+interface SerperResponse {
+  organic?: Array<{ title?: string; link?: string; snippet?: string }>;
 }
 
 export function slugify(name: string): string {
@@ -92,7 +109,16 @@ async function ensureFixtureDir(): Promise<void> {
   }
 }
 
-async function writeFixture(companyName: string, data: EnrichmentResult): Promise<void> {
+async function writeFixture(
+  companyName: string,
+  data: EnrichmentResult,
+  domain?: string,
+): Promise<void> {
+  if (isDemoDomain(domain ?? data.domain)) {
+    logger.info({ domain: domain ?? data.domain }, "Skipping fixture write for demo domain");
+    return;
+  }
+
   try {
     await ensureFixtureDir();
     const file = resolve(FIXTURE_DIR, `${slugify(companyName)}.json`);
@@ -114,13 +140,27 @@ async function readFixtureFile(fileName: string): Promise<EnrichmentResult | nul
 }
 
 async function readFixture(companyName: string, domain?: string): Promise<EnrichmentResult | null> {
-  const candidates = [
-    `${slugify(companyName)}.json`,
-    domain ? `${normalizeDomain(domain)}.json` : null,
-    domain ? `${SCENARIO_FIXTURES[normalizeDomain(domain) ?? ""]}.json` : null,
-  ].filter((value): value is string => Boolean(value));
+  const normalizedDomain = normalizeDomain(domain);
+  const scenarioFile =
+    normalizedDomain && SCENARIO_FIXTURES[normalizedDomain]
+      ? `${SCENARIO_FIXTURES[normalizedDomain]}.json`
+      : null;
 
-  for (const fileName of candidates) {
+  const candidates = isDemoDomain(normalizedDomain)
+    ? [
+        scenarioFile,
+        normalizedDomain ? `${normalizedDomain}.json` : null,
+        `${slugify(companyName)}.json`,
+      ]
+    : [
+        `${slugify(companyName)}.json`,
+        normalizedDomain ? `${normalizedDomain}.json` : null,
+        scenarioFile,
+      ];
+
+  const files = candidates.filter((value): value is string => Boolean(value));
+
+  for (const fileName of files) {
     const fixture = await readFixtureFile(fileName);
     if (fixture) {
       return { ...fixture, source: "fixture" };
@@ -267,6 +307,69 @@ async function fetchFromTavily(
   return null;
 }
 
+async function fetchFromSerper(
+  companyName: string,
+  domain?: string,
+): Promise<EnrichmentResult | null> {
+  if (!env.serperApiKey) return null;
+
+  const queries = [
+    `${companyName} company profile`,
+    domain ? `${domain} company` : null,
+  ].filter((value): value is string => Boolean(value));
+
+  for (const query of queries) {
+    try {
+      const json = await http<SerperResponse>("https://google.serper.dev/search", {
+        method: "POST",
+        headers: {
+          "X-API-KEY": env.serperApiKey,
+        },
+        body: { q: query },
+      });
+
+      const organic = json.organic ?? [];
+      if (organic.length === 0) {
+        logger.warn({ query }, "Serper returned no organic results");
+        continue;
+      }
+
+      const snippets = organic
+        .map((result) => result.snippet ?? result.title ?? "")
+        .filter(Boolean);
+      const combinedText = snippets.join(" ");
+      const extractedDomain =
+        normalizeDomain(domain) ??
+        extractDomainFromUrl(organic[0]?.link) ??
+        null;
+
+      const partial = {
+        domain: extractedDomain,
+        description: buildDescription(organic[0]?.snippet ?? null, snippets.slice(1)),
+        industry: extractIndustry(combinedText),
+        employee_band: extractEmployeeBand(combinedText),
+        website_url: organic[0]?.link ?? websiteFromDomain(extractedDomain),
+        linkedin_url: extractLinkedInUrl(combinedText, organic),
+        news: organic
+          .slice(1, 3)
+          .map((result) => result.title)
+          .filter((title): title is string => Boolean(title)),
+      };
+
+      if (!partial.description && partial.news.length === 0) {
+        logger.warn({ query }, "Serper returned no usable enrichment fields");
+        continue;
+      }
+
+      return finalizeResult(partial, "serper", domain);
+    } catch (err) {
+      logger.warn({ err: String(err), query }, "Serper enrichment failed");
+    }
+  }
+
+  return null;
+}
+
 export async function enrichLead(
   companyName: string,
   domain?: string,
@@ -274,11 +377,26 @@ export async function enrichLead(
   const normalizedDomain = normalizeDomain(domain) ?? undefined;
 
   try {
+    if (isDemoDomain(normalizedDomain)) {
+      const demoFixture = await readFixture(companyName, normalizedDomain);
+      if (demoFixture) {
+        logger.info({ enrichment_source: "fixture", companyName, domain: normalizedDomain, demo: true });
+        return demoFixture;
+      }
+    }
+
     const tavily = await fetchFromTavily(companyName, normalizedDomain);
     if (tavily) {
       logger.info({ enrichment_source: "tavily", companyName, domain: normalizedDomain });
-      await writeFixture(companyName, tavily);
+      await writeFixture(companyName, tavily, normalizedDomain);
       return tavily;
+    }
+
+    const serper = await fetchFromSerper(companyName, normalizedDomain);
+    if (serper) {
+      logger.info({ enrichment_source: "serper", companyName, domain: normalizedDomain });
+      await writeFixture(companyName, serper, normalizedDomain);
+      return serper;
     }
 
     const fixture = await readFixture(companyName, normalizedDomain);
@@ -288,7 +406,7 @@ export async function enrichLead(
     }
 
     const empty = placeholder(normalizedDomain);
-    await writeFixture(companyName, empty);
+    await writeFixture(companyName, empty, normalizedDomain);
     logger.info({ enrichment_source: "placeholder", companyName, domain: normalizedDomain });
     return empty;
   } catch (err) {
@@ -301,7 +419,7 @@ export async function enrichLead(
     }
 
     const empty = placeholder(normalizedDomain);
-    await writeFixture(companyName, empty);
+    await writeFixture(companyName, empty, normalizedDomain);
     logger.info({ enrichment_source: "placeholder", companyName, domain: normalizedDomain });
     return empty;
   }

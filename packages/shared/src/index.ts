@@ -86,7 +86,10 @@ export type GeneratedAction = z.infer<typeof GeneratedActionSchema>;
 export const SlngResultSchema = z.object({
   status: SlngStatusSchema,
   callId: z.string().optional(),
+  /** @deprecated Use livekitUrl — kept for backwards compatibility */
   roomUrl: z.string().optional(),
+  livekitUrl: z.string().optional(),
+  livekitToken: z.string().optional(),
   transcriptSnippet: z.string().optional(),
 });
 export type SlngResult = z.infer<typeof SlngResultSchema>;
@@ -126,6 +129,8 @@ export const LeadRunSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   error: z.string().optional(),
+  humanApproved: z.boolean().optional(),
+  approvedAt: z.string().optional(),
 });
 export type LeadRun = z.infer<typeof LeadRunSchema>;
 
@@ -138,8 +143,18 @@ export const LeadStatusResponseSchema = z.object({
   slng: SlngResultSchema.optional(),
   attio: AttioWritebackSchema.optional(),
   error: z.string().optional(),
+  humanApproved: z.boolean().optional(),
+  approvedAt: z.string().optional(),
 });
 export type LeadStatusResponse = z.infer<typeof LeadStatusResponseSchema>;
+
+export const ApproveLeadResponseSchema = z.object({
+  ok: z.literal(true),
+  humanApproved: z.literal(true),
+  mailtoUrl: z.string().optional(),
+  approvedAt: z.string(),
+});
+export type ApproveLeadResponse = z.infer<typeof ApproveLeadResponseSchema>;
 
 export const ProcessLeadResponseSchema = z.object({
   leadRunId: z.string(),

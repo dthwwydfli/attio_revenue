@@ -43,17 +43,16 @@ const EnvSchema = z
   })
   .superRefine((data, ctx) => {
     const hasLlm =
-      Boolean(data.OPENAI_API_KEY) ||
-      Boolean(data.GROQ_API_KEY) ||
-      Boolean(data.ANTHROPIC_API_KEY) ||
       Boolean(data.GEMINI_API_KEY) ||
+      Boolean(data.OPENAI_API_KEY) ||
+      Boolean(data.ANTHROPIC_API_KEY) ||
       Boolean(data.SIE_API_KEY);
     if (!hasLlm) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message:
-          "At least one LLM provider is required: GEMINI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, ANTHROPIC_API_KEY, or SIE_API_KEY",
-        path: ["OPENAI_API_KEY"],
+          "GEMINI_API_KEY is required (OpenAI, Anthropic, or SIE_API_KEY may be used as fallbacks)",
+        path: ["GEMINI_API_KEY"],
       });
     }
     if (!data.SIE_BASE_URL && !data.SIE_ENDPOINT) {

@@ -13,6 +13,11 @@ import type { ScoringResult } from "./scoring.js";
 
 const logger = createLogger("llm");
 
+/** Gemini sometimes returns literal `\n` sequences instead of real newlines. */
+function normalizeMultilineText(text: string): string {
+  return text.replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+}
+
 const SIE_LLM_MODEL = env.sieLlmModel;
 const OPENAI_MODEL = "gpt-4o-mini";
 const ANTHROPIC_MODEL = "claude-3-haiku-20240307";
@@ -557,6 +562,13 @@ function fallbackEmail(ctx: LeadContext): LLMEmailResult {
       confidence: 0.55,
       source: "fallback",
     },
+    needs_review: {
+      subject: `Re: your inquiry from ${safe(lead.company)}`,
+      body: `Hi ${name},\n\nThanks for reaching out. We're reviewing your fit with our ICP and a teammate will follow up shortly.\n\nBest,\nLeadLoop Agent`,
+      tone: "professional",
+      confidence: 0.55,
+      source: "fallback",
+    },
   };
 
   return byBand[scoring.band];
@@ -598,18 +610,21 @@ function fallbackRouting(ctx: LeadContext): LLMRoutingResult {
   const { lead, scoring } = ctx;
   const hot = scoring.band === "hot";
   const warm = scoring.band === "warm";
+  const review = scoring.band === "needs_review";
 
   return {
-    action: hot && lead.phone ? "voice_call" : hot ? "route_to_sdr" : warm ? "nurture" : "nurture",
-    priority: hot ? "high" : warm ? "medium" : "low",
-    ownerHint: hot ? "senior_sdr" : warm ? "sdr_pool" : "nurture_queue",
-    shouldCallVoice: hot && Boolean(lead.phone),
+    action: hot && lead.phone ? "voice_call" : hot ? "route_to_sdr" : review ? "review" : warm ? "nurture" : "nurture",
+    priority: hot ? "high" : warm || review ? "medium" : "low",
+    ownerHint: hot ? "senior_sdr" : review ? "human_review" : warm ? "sdr_pool" : "nurture_queue",
+    shouldCallVoice: hot,
     taskTitle: hot
       ? `[HOT] Book demo with ${safe(lead.name)}`
       : warm
         ? `[WARM] Follow up with ${safe(lead.name)}`
-        : undefined,
-    taskBody: hot || warm ? `${scoring.score}/100 — ${scoring.explanation}` : undefined,
+        : review
+          ? `[REVIEW] Qualify ${safe(lead.name)}`
+          : undefined,
+    taskBody: hot || warm || review ? `${scoring.score}/100 — ${scoring.explanation}` : undefined,
     rationale: scoring.explanation,
     confidence: 0.55,
     source: "fallback",
@@ -657,8 +672,8 @@ export async function generateEmailReply(input: LeadContext): Promise<LLMEmailRe
 
     if (result) {
       const raw = result.raw as Record<string, unknown>;
-      const subject = typeof raw.subject === "string" ? raw.subject : "";
-      const body = typeof raw.body === "string" ? raw.body : "";
+      const subject = typeof raw.subject === "string" ? normalizeMultilineText(raw.subject) : "";
+      const body = typeof raw.body === "string" ? normalizeMultilineText(raw.body) : "";
       const tone = raw.tone === "casual" || raw.tone === "professional" ? raw.tone : toneForBand(input.scoring.band);
 
       if (subject && body) {
@@ -941,9 +956,9 @@ export async function generateAction(
   return {
     replySubject: email.subject,
     replyBody: email.body,
-    taskTitle: routing.taskTitle,
-    taskBody: routing.taskBody ?? notes.notes,
-    shouldCallVoice: routing.shouldCallVoice,
+    taskTitle: scoring.band === "cold" ? undefined : routing.taskTitle,
+    taskBody: scoring.band === "cold" ? undefined : (routing.taskBody ?? notes.notes),
+    shouldCallVoice: scoring.band === "hot",
     rationale: routing.rationale,
     source,
   };

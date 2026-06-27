@@ -1,33 +1,40 @@
 import type { FastifyInstance } from "fastify";
-import { DemoScenarioSchema, DEMO_LEADS, type LeadStatusResponse } from "@leadloop/shared";
+import {
+  LeadInputSchema,
+  DemoScenarioSchema,
+  DEMO_LEADS,
+  type LeadStatusResponse,
+} from "@leadloop/shared";
 import { env } from "../lib/env.js";
-import { isSlngApiKeyConfigured, resolveSlngAgentId } from "../lib/slng-client.js";
-import { processDemoLead } from "../pipeline.js";
+import { getIntegrationHealth } from "../lib/integrations.js";
 import { getRun, listRuns } from "../store.js";
+import { processLead } from "../pipeline.js";
+import { approveLead, ApprovalError } from "../services/approve.js";
+import { handleSlngWebhook, validateSlngWebhookSecret } from "../services/slng.js";
+import { appendEvent, updateRun } from "../store.js";
+import { createNote } from "../services/attio.js";
 import type { HealthResponse } from "../types/global.js";
-import { processLeadRoute } from "./leads/process.js";
-import { slngWebhookRoute } from "./webhooks/slng.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async (): Promise<HealthResponse> => {
-    const slngAgent = isSlngApiKeyConfigured() ? Boolean(await resolveSlngAgentId()) : false;
-    return {
-      ok: true,
-      uptime: process.uptime(),
-      attio: Boolean(env.attioApiKey),
-      tavily: Boolean(env.tavilyApiKey),
-      openai: Boolean(env.openaiApiKey),
-      slng: isSlngApiKeyConfigured(),
-      slngAgent,
-      sie: env.sieEndpoint,
-    };
-  });
+  app.get("/health", async (): Promise<HealthResponse> => ({
+    ok: true,
+    uptime: process.uptime(),
+    ...getIntegrationHealth(),
+  }));
 
   app.get("/icp", async () => ({
     description: env.icpDescription,
   }));
 
-  app.post("/leads/process", processLeadRoute);
+  app.post("/leads/process", async (request, reply) => {
+    const parsed = LeadInputSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: parsed.error.flatten() });
+    }
+    const result = await processLead(parsed.data);
+    return result;
+  });
+
   app.get<{ Params: { id: string } }>("/leads/:id", async (request, reply) => {
     const run = getRun(request.params.id);
     if (!run) return reply.status(404).send({ error: "Lead run not found" });
@@ -47,13 +54,28 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       slng: run.slng,
       attio: run.attio,
       error: run.error,
+      humanApproved: run.humanApproved,
+      approvedAt: run.approvedAt,
     };
     return status;
   });
 
-  app.get("/leads", async () => listRuns());
+  app.post<{ Params: { id: string } }>("/leads/:id/approve", async (request, reply) => {
+    const run = getRun(request.params.id);
+    if (!run) return reply.status(404).send({ error: "Lead run not found" });
 
-  app.post("/webhooks/slng", slngWebhookRoute);
+    try {
+      const result = await approveLead(run);
+      return result;
+    } catch (err) {
+      if (err instanceof ApprovalError) {
+        return reply.status(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  app.get("/leads", async () => listRuns());
 
   app.post<{ Params: { scenario: string } }>(
     "/demo/replay/:scenario",
@@ -63,8 +85,59 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "Invalid scenario. Use hot, warm, or cold." });
       }
       const lead = DEMO_LEADS[parsed.data];
-      const result = await processDemoLead(lead);
+      const result = await processLead(lead);
       return { ...result, scenario: parsed.data };
     },
   );
+
+  app.post("/webhooks/slng", async (request, reply) => {
+    const headerSecret = request.headers["x-slng-webhook-secret"];
+    const secret =
+      typeof headerSecret === "string"
+        ? headerSecret
+        : Array.isArray(headerSecret)
+          ? headerSecret[0]
+          : undefined;
+
+    if (!validateSlngWebhookSecret(secret)) {
+      return reply.status(401).send({ error: "Invalid SLNG webhook secret" });
+    }
+
+    const payload = request.body as {
+      call_id?: string;
+      summary?: string;
+      transcript?: string;
+      lead_run_id?: string;
+      metadata?: { lead_run_id?: string };
+    };
+
+    const leadRunId = payload.lead_run_id ?? payload.metadata?.lead_run_id;
+    const result = handleSlngWebhook(payload);
+
+    if (leadRunId) {
+      const run = getRun(leadRunId);
+      if (run?.attio?.personRecordId && result.transcriptSnippet) {
+        await createNote(
+          run.attio.personRecordId,
+          `## SLNG Voice Callback\n\n${result.transcriptSnippet}`,
+        ).catch(() => undefined);
+      }
+      updateRun(leadRunId, {
+        slng: {
+          ...run?.slng,
+          status: result.status,
+          callId: result.callId ?? run?.slng?.callId,
+          transcriptSnippet: result.transcriptSnippet,
+        },
+      });
+      appendEvent(leadRunId, {
+        step: "voice",
+        status: "completed",
+        message: "SLNG webhook received",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    return { ok: true, ...result };
+  });
 }

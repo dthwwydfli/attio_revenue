@@ -46,9 +46,10 @@ All variables below are **required at startup**. Copy `.env.example` and fill ev
 |----------|-------|
 | `ATTIO_API_KEY` | Attio developer API key |
 | `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
-| `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
-| `TAVILY_API_KEY` | Optional live enrichment; fixtures/placeholder used when absent |
-| `SIE_ENDPOINT` or `SIE_BASE_URL` + `SIE_API_KEY` | Superlinked hackathon GPU cluster |
+| `GEMINI_API_KEY` | Primary LLM provider (Gemini) |
+| `GEMINI_MODEL` | Optional — defaults to `gemini-3.5-flash` |
+| `TAVILY_API_KEY` or `SERPER_API_KEY` | At least one enrichment provider |
+| `SIE_ENDPOINT` or `SIE_BASE_URL` | Superlinked SIE endpoint |
 | `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
 | `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | Public API URL for frontend |
@@ -175,9 +176,10 @@ Run `pnpm --filter @leadloop/api attio:setup` or create manually:
 ## Demo
 
 1. Open http://localhost:3000
-2. Click **Demo Hot Lead** or go to `/demo/submit`
-3. Submit → watch live pipeline at `/demo?leadId=...`
-4. Click **Open in Attio** when complete
+2. Click **Instant replay** on the landing page, **Demo Hot Lead** on `/demo/submit`, or use sidebar replay in `/console`
+3. Watch live pipeline at `/console?leadId=...`
+4. Click **Approve** when complete — hot/warm opens email draft; cold confirms nurture
+5. Click **Open in Attio** to verify writeback
 
 See [`DEMO.md`](DEMO.md) for the 90-second pitch script.
 
@@ -191,6 +193,7 @@ See [`DEMO.md`](DEMO.md) for the 90-second pitch script.
 | GET | `/leads/:id` | Full lead run record |
 | GET | `/leads/:id/status` | Poll status for frontend |
 | GET | `/leads` | List recent runs |
+| POST | `/leads/:id/approve` | Human-in-the-loop approval (mailto + Attio note) |
 | POST | `/demo/replay/:scenario` | Replay hot/warm/cold demo lead |
 | POST | `/webhooks/slng` | SLNG voice callback |
 

@@ -6,6 +6,9 @@ import { createLogger } from "../lib/logger.js";
 const ATTIO_BASE = "https://api.attio.com/v2";
 const attioLogger = createLogger("attio");
 
+/** Select attributes require `{ option: title }`, not `{ value: title }`. */
+const SELECT_ATTRIBUTES = new Set(["lead_band", "routing_status"]);
+
 export class AttioApiError extends Error {
   constructor(
     public readonly status: number,
@@ -69,8 +72,10 @@ function extractTaskId(data: unknown): string {
 function toAttioValues(fields: Record<string, unknown>): Record<string, unknown[]> {
   const values: Record<string, unknown[]> = {};
   for (const [key, val] of Object.entries(fields)) {
-    if (val === undefined) continue;
-    if (typeof val === "number" || typeof val === "string") {
+    if (val === undefined || val === null) continue;
+    if (SELECT_ATTRIBUTES.has(key) && typeof val === "string") {
+      values[key] = [{ option: val }];
+    } else if (typeof val === "number" || typeof val === "string") {
       values[key] = [{ value: val }];
     } else {
       values[key] = [val];
@@ -352,6 +357,7 @@ export async function createTask(
         is_completed: false,
         assignees: [],
         linked_records: [{ target_object: "people", target_record_id: personId }],
+        assignees: [],
       },
     },
   });

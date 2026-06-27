@@ -1,13 +1,12 @@
 {
   "domain": "midmarket.io",
-  "description": "Mid Market Solutions provides enterprise risk management solutions, including supply chain, third-party, and credit risk services. It has over 4 million customers and $750 million in annual revenue.",
-  "industry": null,
-  "employee_band": "500+ employees",
+  "description": "MidMarket Solutions sells sales enablement software to SMB sales teams.",
+  "industry": "Sales Tech",
+  "employee_band": "50-100 employees",
   "website_url": "https://midmarket.io",
-  "linkedin_url": null,
+  "linkedin_url": "https://linkedin.com/company/midmarket-solutions",
   "news": [
-    "Mid Market Solutions | RapidRatings",
-    "MID MARKET SOLUTIONS LIMITED filing history - Companies House"
+    "MidMarket Solutions hiring SDRs for inbound pipeline"
   ],
-  "source": "tavily"
+  "source": "fixture"
 }
