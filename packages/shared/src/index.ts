@@ -47,7 +47,6 @@ export type LeadInput = z.infer<typeof LeadInputSchema>;
 
 export const EnrichmentSourceSchema = z.enum([
   "tavily",
-  "serper",
   "fixture",
   "placeholder",
 ]);

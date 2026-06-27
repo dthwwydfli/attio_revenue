@@ -14,6 +14,7 @@
     "enrich:test": "tsx src/scripts/enrich-test.ts",
     "scoring:test": "tsx src/scripts/scoring-test.ts",
     "llm:test": "tsx src/scripts/llm-test.ts",
+    "slng:webhook:test": "tsx src/scripts/slng-webhook-test.ts",
     "test:apis": "tsx src/scripts/test-all-apis.ts"
   },
   "dependencies": {

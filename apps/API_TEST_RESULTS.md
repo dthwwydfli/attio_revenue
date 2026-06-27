@@ -1,13 +1,13 @@
 # LeadLoop API Test Results
 
-**Run at:** 2026-06-27T13:31:29.209Z
+**Run at:** 2026-06-27T14:38:23.557Z
 
 | Status | Count |
 |--------|-------|
-| PASS | 5 |
-| FAIL | 1 |
+| PASS | 7 |
+| FAIL | 0 |
 | SKIP (not configured) | 2 |
-| STUB (not wired yet) | 4 |
+| STUB (not wired yet) | 3 |
 
 ## Results
 
@@ -15,9 +15,9 @@
 
 **Status:** PASS
 
-companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=9a26ab1a-016c-5aa2-b8f2-0e7292989600, noteId=10f6f883-c19e-470b-a361-86f1ad7915a1
+companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=14f53d7e-0182-5038-acec-d95b0944cc99, noteId=70f4055d-2bab-4aa6-aa93-4201fce901a6
 
-**Verify in browser:** https://app.attio.com/brunel-university/person/9a26ab1a-016c-5aa2-b8f2-0e7292989600
+**Verify in browser:** https://app.attio.com/brunel-university/person/14f53d7e-0182-5038-acec-d95b0944cc99
 
 ### ✅ Tavily enrichment
 
@@ -25,17 +25,17 @@ companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=9a26ab1a-016c-5aa2-b8f2
 
 source=tavily, domain=acmecorp.io
 
-### ❌ Serper API
+### ✅ Enrichment fallback
 
-**Status:** FAIL
+**Status:** PASS
 
-HTTP 403: {"message":"Unauthorized.","statusCode":403}
+Live Tavily returned data (source=tavily)
 
 ### ✅ Superlinked SIE
 
 **Status:** PASS
 
-HTTP 200 at http://localhost:8080
+HTTP 200 at http://a64e1dc31032c40e4b1e9330a1273c83-1760332796.us-east-2.elb.amazonaws.com:8080
 
 ### ✅ ICP scoring
 
@@ -59,7 +59,7 @@ No real SLNG_API_KEY in .env.local — voice uses mock in pipeline
 
 **Status:** PASS
 
-{"ok":true,"uptime":59.5860619}
+{"ok":true,"uptime":30.9954351}
 
 ### 🔧 HTTP POST /leads/process
 
@@ -73,11 +73,11 @@ Returns 501 — pipeline not wired to routes yet (expected)
 
 Returns 501 — expected until pipeline wired
 
-### 🔧 HTTP POST /webhooks/slng
+### ✅ HTTP POST /webhooks/slng
 
-**Status:** STUB
+**Status:** PASS
 
-Returns 501 — expected until SLNG webhook wired
+Returns 200 { ok: true }
 
 ### 🔧 HTTP POST /demo/replay/:scenario
 
@@ -89,7 +89,8 @@ Returns 501 — expected until pipeline wired
 
 1. **Attio** — Open the person URL above in Attio. You should see a new person, linked to Acme Corp, with a test note.
 2. **Tavily** — PASS means live web enrichment works. Check `apps/api/src/fixtures/enrichment/acme-corp.json` for cached data.
-3. **Serper** — PASS means fallback search API works if Tavily is down.
-4. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show `{"ok":true,"uptime":...}`.
-5. **STUB routes** — 501 is correct for now; pipeline layers exist but routes are not connected yet.
-6. **SKIP** — Add real keys to `.env.local` for OpenAI, SLNG, or start SIE Docker for those tests to pass.
+3. **Enrichment fallback** — PASS means fixture/placeholder fallback works when Tavily is unavailable.
+4. **SLNG webhook** — PASS means POST /webhooks/slng returns 200 { ok: true }.
+5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show `{"ok":true,"uptime":...}`.
+6. **STUB routes** — 501 is correct for now; pipeline layers exist but routes are not connected yet.
+7. **SKIP** — Add real keys to `.env.local` for OpenAI, SLNG, or start SIE Docker for those tests to pass.

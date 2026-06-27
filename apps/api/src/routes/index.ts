@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { HealthResponse, NotImplementedResponse } from "../types/global.js";
+import { slngWebhookRoute } from "./webhooks/slng.js";
 
 function notImplemented(layer: string, message: string): NotImplementedResponse {
   return {
@@ -30,11 +31,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     );
   });
 
-  app.post("/webhooks/slng", async (_request, reply) => {
-    return reply.status(501).send(
-      notImplemented("slng", "SLNG webhook handler is not wired yet"),
-    );
-  });
+  app.post("/webhooks/slng", slngWebhookRoute);
 
   app.post<{ Params: { scenario: string } }>(
     "/demo/replay/:scenario",

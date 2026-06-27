@@ -42,7 +42,7 @@ All variables below are **required at startup**. Copy `.env.example` and fill ev
 | `ATTIO_API_KEY` | Attio developer API key |
 | `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
 | `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
-| `TAVILY_API_KEY` or `SERPER_API_KEY` | At least one enrichment provider |
+| `TAVILY_API_KEY` | Optional live enrichment; fixtures/placeholder used when absent |
 | `SIE_BASE_URL` | Superlinked SIE endpoint |
 | `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
 | `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
