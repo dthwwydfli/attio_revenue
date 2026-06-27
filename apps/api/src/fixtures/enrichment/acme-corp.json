@@ -1,13 +1,13 @@
 {
   "domain": "acmecorp.io",
-  "description": "Acme Corp is a fictional company known from cartoons, especially Looney Tunes, and a real company, Acme United Corp, operates in the art and office supply manufacturing industry. For detailed profiles, visit IBISWorld or LinkedIn.",
-  "industry": "Retail",
-  "employee_band": null,
+  "description": "Acme Corp builds enterprise workflow automation tools for revenue teams.",
+  "industry": "B2B SaaS",
+  "employee_band": "200-500 employees",
   "website_url": "https://acmecorp.io",
-  "linkedin_url": "https://www.linkedin.com/company/acme-corp-global",
+  "linkedin_url": "https://linkedin.com/company/acme-corp",
   "news": [
-    "Acme United Corp - Company Profile Report | IBISWorld",
-    "Acme Corp - Company Profile and News"
+    "Raised Series B to expand enterprise CRM automation",
+    "Launched AI-powered sales routing module"
   ],
-  "source": "tavily"
+  "source": "fixture"
 }

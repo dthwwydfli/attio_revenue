@@ -77,3 +77,36 @@ export async function createNumberAttribute(
     config: {},
   });
 }
+
+export async function ensureSelectOptions(
+  objectSlug: string,
+  apiSlug: string,
+  options: string[],
+): Promise<void> {
+  const attrs = (await listObjectAttributes(objectSlug)) as {
+    data?: Array<{ api_slug: string; id?: { attribute_id?: string } }>;
+  };
+  const attr = attrs.data?.find((x) => x.api_slug === apiSlug);
+  if (!attr?.id?.attribute_id) return;
+
+  const existing = (await attioFetch(
+    `/objects/${objectSlug}/attributes/${attr.id.attribute_id}/options`,
+  )) as { data?: Array<{ title: string }> };
+  const titles = new Set(existing.data?.map((o) => o.title) ?? []);
+
+  for (const option of options) {
+    if (titles.has(option)) continue;
+    try {
+      await attioFetch(`/objects/${objectSlug}/attributes/${attr.id.attribute_id}/options`, {
+        method: "POST",
+        body: { data: { title: option } },
+      });
+    } catch (err) {
+      if (err instanceof AttioApiError) {
+        const body = err.responseBody;
+        if (body.includes("already exists") || body.includes("slug_conflict")) continue;
+      }
+      throw err;
+    }
+  }
+}

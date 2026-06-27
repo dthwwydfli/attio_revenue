@@ -169,10 +169,12 @@ async function testSLNG() {
 async function testHttpRoutes() {
   const base = `http://localhost:${env.port}`;
 
-  async function hit(method: string, path: string, body?: unknown) {
+  async function hit(method: string, path: string, body?: unknown, extraHeaders?: Record<string, string>) {
+    const headers: Record<string, string> = { ...extraHeaders };
+    if (body) headers["Content-Type"] = "application/json";
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body ? JSON.stringify(body) : undefined,
     });
     const text = await res.text();
@@ -203,7 +205,10 @@ async function testHttpRoutes() {
       fail("HTTP GET /leads/:id/status", `status=${status.status}`);
     }
 
-    const slng = await hit("POST", "/webhooks/slng", {});
+    const slngHeaders = env.slngWebhookSecret
+      ? { "x-slng-webhook-secret": env.slngWebhookSecret }
+      : undefined;
+    const slng = await hit("POST", "/webhooks/slng", {}, slngHeaders);
     if (slng.status === 200) {
       pass("HTTP POST /webhooks/slng", `status=${slng.status}`);
     } else {

@@ -3,6 +3,7 @@ import {
   createSelectAttribute,
   createTextAttribute,
   createNumberAttribute,
+  ensureSelectOptions,
 } from "../services/attio-schema.js";
 
 async function main() {
@@ -44,6 +45,17 @@ async function main() {
       console.error("✗", err instanceof Error ? err.message : err);
     }
   }
+
+  console.log("\nEnsuring select options exist…");
+  await ensureSelectOptions("people", "lead_band", ["hot", "warm", "cold", "needs_review"]);
+  await ensureSelectOptions("people", "routing_status", [
+    "processing",
+    "routed",
+    "voice_pending",
+    "completed",
+    "failed",
+  ]);
+  console.log("✓ Select options ensured");
 
   console.log("\nDone. Verify attributes in Attio Settings → Objects.");
 }
