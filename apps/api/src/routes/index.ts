@@ -5,16 +5,18 @@ import {
   DEMO_LEADS,
   type LeadStatusResponse,
 } from "@leadloop/shared";
-import { env } from "../config.js";
+import { env } from "../lib/env.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
 import { handleSlngWebhook } from "../services/slng.js";
 import { appendEvent, updateRun } from "../store.js";
 import { createNote } from "../services/attio.js";
+import type { HealthResponse } from "../types/global.js";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async () => ({
+  app.get("/health", async (): Promise<HealthResponse> => ({
     ok: true,
+    uptime: process.uptime(),
     attio: Boolean(env.attioApiKey),
     tavily: Boolean(env.tavilyApiKey),
     openai: Boolean(env.openaiApiKey),
@@ -87,10 +89,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       const run = getRun(payload.lead_run_id);
       if (run?.attio?.personRecordId && result.transcriptSnippet) {
         await createNote(
-          "people",
           run.attio.personRecordId,
-          "SLNG Voice Callback",
-          result.transcriptSnippet,
+          `## SLNG Voice Callback\n\n${result.transcriptSnippet}`,
         ).catch(() => undefined);
       }
       updateRun(payload.lead_run_id, {

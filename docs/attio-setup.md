@@ -11,6 +11,7 @@ Create these custom attributes in Attio (or run `pnpm --filter @leadloop/api att
 | `routing_status` | Select | processing, routed, voice_pending, completed, failed |
 | `agent_summary` | Text | — |
 | `source` | Text | — |
+| `last_agent_run_at` | Text | — |
 
 ## Companies object
 

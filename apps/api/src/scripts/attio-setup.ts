@@ -1,9 +1,9 @@
-import "../config.js";
+import "../lib/env.js";
 import {
   createSelectAttribute,
   createTextAttribute,
   createNumberAttribute,
-} from "../services/attio.js";
+} from "../services/attio-schema.js";
 
 async function main() {
   console.log("Setting up Attio custom attributes for LeadLoop...\n");
@@ -27,6 +27,7 @@ async function main() {
       ]),
     () => createTextAttribute("people", "agent_summary", "Agent Summary"),
     () => createTextAttribute("people", "source", "Lead Source"),
+    () => createTextAttribute("people", "last_agent_run_at", "Last Agent Run At"),
   ];
 
   const companyAttrs = [

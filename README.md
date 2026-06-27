@@ -16,6 +16,79 @@ Form/Webhook → n8n → LeadLoop API → [Enrich | Superlinked | LLM | SLNG] �
 - **Orchestration:** n8n workflows
 - **Business logic:** `apps/api` (Fastify)
 
+## Backend Setup
+
+Layer 0 is the Fastify bootstrap: validated env, structured logging, shared HTTP client, and route registration. The lead pipeline, Attio client, enrichment, scoring, LLM, and SLNG integrations are wired through the route handlers.
+
+### Structure
+
+```
+apps/api/src/
+├── index.ts           # Fastify entrypoint + graceful shutdown
+├── routes/index.ts    # Route registration (pipeline, demo, webhooks)
+├── pipeline.ts        # Full lead processing pipeline
+├── lib/
+│   ├── env.ts         # Zod-validated environment
+│   ├── logger.ts      # Pino logger + child loggers per module
+│   └── http.ts        # Shared fetch wrapper (timeout, retries, JSON)
+├── services/
+│   └── attio.ts       # Typed Attio v2 client
+└── types/global.ts    # Shared API response types
+```
+
+### Environment
+
+All variables below are **required at startup**. Copy `.env.example` and fill every value. The API throws a descriptive error listing anything missing.
+
+| Variable | Notes |
+|----------|-------|
+| `ATTIO_API_KEY` | Attio developer API key |
+| `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
+| `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
+| `TAVILY_API_KEY` or `SERPER_API_KEY` | At least one enrichment provider |
+| `SIE_BASE_URL` | Superlinked SIE endpoint |
+| `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
+| `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_API_URL` | Public API URL for frontend |
+
+### Scripts
+
+```bash
+pnpm install
+pnpm --filter @leadloop/shared build
+
+# Development (watch mode)
+pnpm dev:api
+
+# Production build + start
+pnpm build:api
+pnpm start:api
+```
+
+### Verify
+
+```bash
+curl http://localhost:3001/health
+# → { "ok": true, "uptime": 12.34, "attio": true, ... }
+```
+
+### Logging
+
+- **Development:** pretty-printed logs via `pino-pretty`
+- **Production:** JSON logs (`NODE_ENV=production`)
+- **Per-module:** `createLogger("module-name")` from `lib/logger.ts`
+
+### Shared HTTP client
+
+Use `http()` from `lib/http.ts` for outbound calls (enrichment, SLNG, SIE, etc.):
+
+- 30s default timeout
+- Retries on 429/5xx with exponential backoff
+- `User-Agent: LeadLoop/1.0`
+- Automatic JSON parse + structured error logging
+
+---
+
 ## Quick start
 
 ### Prerequisites
@@ -23,13 +96,13 @@ Form/Webhook → n8n → LeadLoop API → [Enrich | Superlinked | LLM | SLNG] �
 - Node.js 20+
 - pnpm 9+
 - Attio API key ([developer settings](https://attio.com))
-- Optional: Tavily, OpenAI, SLNG, Superlinked SIE keys
+- Tavily or Serper, OpenAI or Groq, SLNG, and Superlinked SIE keys (see `.env.example`)
 
 ### Setup
 
 ```bash
 cp .env.example .env
-# Fill in ATTIO_API_KEY and ATTIO_WORKSPACE_SLUG at minimum
+# Fill in all required values listed in .env.example
 
 pnpm install
 pnpm --filter @leadloop/shared build
@@ -97,13 +170,14 @@ See [`DEMO.md`](DEMO.md) for the 90-second pitch script.
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/health` | Health check (`ok`, `uptime`, integration flags) |
+| GET | `/icp` | ICP description for scoring |
 | POST | `/leads/process` | Run full pipeline |
-| GET | `/leads/:id` | Lead run detail |
-| GET | `/leads/:id/status` | Poll status (frontend) |
-| POST | `/demo/replay/:scenario` | Replay hot/warm/cold |
-| POST | `/webhooks/slng` | SLNG callback |
-| GET | `/icp` | ICP definition |
-| GET | `/health` | Health check |
+| GET | `/leads/:id` | Full lead run record |
+| GET | `/leads/:id/status` | Poll status for frontend |
+| GET | `/leads` | List recent runs |
+| POST | `/demo/replay/:scenario` | Replay hot/warm/cold demo lead |
+| POST | `/webhooks/slng` | SLNG voice callback |
 
 ## Environment variables
 

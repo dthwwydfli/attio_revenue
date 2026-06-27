@@ -1,9 +1,12 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import { env } from "./config.js";
+import { env } from "./lib/env.js";
+import { rootLogger } from "./lib/logger.js";
 import { registerRoutes } from "./routes/index.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: rootLogger,
+});
 
 await app.register(cors, {
   origin: env.corsOrigin,
@@ -12,10 +15,25 @@ await app.register(cors, {
 
 await registerRoutes(app);
 
+const shutdown = async (signal: string): Promise<void> => {
+  rootLogger.info({ signal }, "Shutting down gracefully");
+  try {
+    await app.close();
+    rootLogger.info("Server closed");
+    process.exit(0);
+  } catch (err) {
+    rootLogger.error({ err }, "Error during shutdown");
+    process.exit(1);
+  }
+};
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+
 try {
   await app.listen({ port: env.port, host: "0.0.0.0" });
-  console.log(`LeadLoop API listening on http://localhost:${env.port}`);
+  rootLogger.info({ port: env.port, corsOrigin: env.corsOrigin }, "LeadLoop API listening");
 } catch (err) {
-  app.log.error(err);
+  rootLogger.error({ err }, "Failed to start server");
   process.exit(1);
 }
