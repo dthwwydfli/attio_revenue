@@ -1,13 +1,13 @@
 {
   "domain": "acmecorp.io",
-  "description": "Acme United Corporation has been a leading global supplier of cutting, measuring, first aid, and sharpening products for over 150 years. It operates in the United States, Canada, Europe, and Asia.",
+  "description": "Acme Corp is a fictional company known from cartoons, especially Looney Tunes, and a real company, Acme United Corp, operates in the art and office supply manufacturing industry. For detailed profiles, visit IBISWorld or LinkedIn.",
   "industry": "Retail",
   "employee_band": null,
   "website_url": "https://acmecorp.io",
   "linkedin_url": "https://www.linkedin.com/company/acme-corp-global",
   "news": [
     "Acme United Corp - Company Profile Report | IBISWorld",
-    "Acme Corp - Company Profile and News - Bloomberg Markets"
+    "Acme Corp - Company Profile and News"
   ],
   "source": "tavily"
 }

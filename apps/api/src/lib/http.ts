@@ -31,7 +31,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function mergeHeaders(init?: HeadersInit): Headers {
+function mergeHeaders(init?: RequestInit["headers"]): Headers {
   const headers = new Headers(init);
   if (!headers.has("User-Agent")) {
     headers.set("User-Agent", USER_AGENT);
