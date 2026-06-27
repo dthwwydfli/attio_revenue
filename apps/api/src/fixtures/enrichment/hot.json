@@ -1,0 +1,13 @@
+{
+  "domain": "acmecorp.io",
+  "description": "Acme Corp builds enterprise workflow automation tools for revenue teams.",
+  "industry": "B2B SaaS",
+  "employee_band": "200-500 employees",
+  "website_url": "https://acmecorp.io",
+  "linkedin_url": "https://linkedin.com/company/acme-corp",
+  "news": [
+    "Raised Series B to expand enterprise CRM automation",
+    "Launched AI-powered sales routing module"
+  ],
+  "source": "fixture"
+}
