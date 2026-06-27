@@ -3,9 +3,13 @@ export interface HealthResponse {
   uptime: number;
   attio: boolean;
   tavily: boolean;
+  serper: boolean;
   gemini: boolean;
+  openai: boolean;
+  anthropic: boolean;
   slng: boolean;
-  sie: string;
+  sie: boolean;
+  n8n: boolean;
 }
 
 export interface NotImplementedResponse {

@@ -6,10 +6,11 @@ import {
   type LeadStatusResponse,
 } from "@leadloop/shared";
 import { env } from "../lib/env.js";
+import { getIntegrationHealth } from "../lib/integrations.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
 import { approveLead, ApprovalError } from "../services/approve.js";
-import { handleSlngWebhook, validateSlngWebhookSecret, isSlngConfigured } from "../services/slng.js";
+import { handleSlngWebhook, validateSlngWebhookSecret } from "../services/slng.js";
 import { appendEvent, updateRun } from "../store.js";
 import { createNote } from "../services/attio.js";
 import type { HealthResponse } from "../types/global.js";
@@ -18,11 +19,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async (): Promise<HealthResponse> => ({
     ok: true,
     uptime: process.uptime(),
-    attio: Boolean(env.attioApiKey),
-    tavily: Boolean(env.tavilyApiKey),
-    gemini: Boolean(env.geminiApiKey),
-    slng: isSlngConfigured(),
-    sie: env.sieEndpoint,
+    ...getIntegrationHealth(),
   }));
 
   app.get("/icp", async () => ({
