@@ -1,6 +1,6 @@
 # LeadLoop API Test Results
 
-**Run at:** 2026-06-27T14:38:23.557Z
+**Run at:** 2026-06-27T14:59:12.918Z
 
 | Status | Count |
 |--------|-------|
@@ -15,9 +15,9 @@
 
 **Status:** PASS
 
-companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=14f53d7e-0182-5038-acec-d95b0944cc99, noteId=70f4055d-2bab-4aa6-aa93-4201fce901a6
+companyId=416e8a3b-615e-5a78-aead-2567885bfb56, personId=87f24e0c-59e3-59af-b936-3fd7506bdca6, noteId=cad8ad79-9925-4176-9865-dc015c5bca5a
 
-**Verify in browser:** https://app.attio.com/brunel-university/person/14f53d7e-0182-5038-acec-d95b0944cc99
+**Verify in browser:** https://app.attio.com/brunel-university/person/87f24e0c-59e3-59af-b936-3fd7506bdca6
 
 ### ✅ Tavily enrichment
 
@@ -59,7 +59,7 @@ No real SLNG_API_KEY in .env.local — voice uses mock in pipeline
 
 **Status:** PASS
 
-{"ok":true,"uptime":30.9954351}
+{"ok":true,"uptime":272.4771654}
 
 ### 🔧 HTTP POST /leads/process
 

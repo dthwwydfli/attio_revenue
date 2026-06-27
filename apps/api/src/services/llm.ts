@@ -1,7 +1,14 @@
 import type { EnrichmentResult, GeneratedAction, LeadInput } from "@leadloop/shared";
-import { SIEClient } from "@superlinked/sie-sdk";
 import { env } from "../lib/env.js";
 import { createLogger } from "../lib/logger.js";
+import {
+  closeSieClient,
+  createSieClient,
+  ensureWarmLlmLane,
+  getWarmLlmRoute,
+  isSieConfigured,
+  SIE_WARM_LLM_MODEL,
+} from "../lib/sie-client.js";
 import type { ScoringResult } from "./scoring.js";
 
 const logger = createLogger("llm");
@@ -85,7 +92,7 @@ function isPlaceholderKey(key: string): boolean {
 }
 
 function hasSieLlm(): boolean {
-  return Boolean(env.sieEndpoint && env.sieApiKey && !isPlaceholderKey(env.sieApiKey));
+  return isSieConfigured();
 }
 
 function hasOpenAI(): boolean {
@@ -143,10 +150,11 @@ function buildPrompt(ctx: LeadContext, task: string, jsonShape: string): string 
     "- Use ONLY the provided facts.",
     "- Do not invent companies, people, metrics, or products not in facts.",
     "- If a field is unknown, say unknown or omit it.",
-    "- Return valid JSON only matching the schema exactly.",
+    "- Output MUST be a single raw JSON object matching the schema. No markdown fences, no bullet lists, no extra keys.",
     `Task: ${task}`,
     `JSON schema: ${jsonShape}`,
     buildFactsBlock(ctx),
+    "Respond with JSON only:",
   ].join("\n\n");
 }
 
@@ -207,36 +215,66 @@ function logLLM(meta: LLMCallMeta, detail?: string): void {
 
 async function callSie(
   prompt: string,
-  maxNewTokens = 256,
+  maxNewTokens = 2048,
+  jsonShape?: string,
 ): Promise<{ text: string; promptTokens?: number; outputTokens?: number } | null> {
   if (!hasSieLlm()) {
     logger.warn("SIE LLM skipped — missing SIE_ENDPOINT or SIE_API_KEY");
     return null;
   }
 
-  let client: SIEClient | undefined;
+  const userPrompt = jsonShape
+    ? [
+        "Return ONLY one valid JSON object matching the schema below.",
+        `Schema: ${jsonShape}`,
+        "Do not use markdown, bullet lists, or commentary.",
+        "",
+        prompt,
+      ].join("\n")
+    : prompt;
+
+  let client: ReturnType<typeof createSieClient> | undefined;
   try {
-    client = new SIEClient(env.sieEndpoint, {
-      apiKey: env.sieApiKey || undefined,
-      timeout: 60_000,
-    });
-    const result = await client.generate(SIE_LLM_MODEL, prompt, {
-      maxNewTokens,
-      temperature: 0,
-    });
-    const usage = result.usage as
-      | {
-          prompt_tokens?: number;
-          completion_tokens?: number;
-          promptTokens?: number;
-          completionTokens?: number;
-        }
-      | undefined;
-    return {
-      text: result.text,
-      promptTokens: usage?.prompt_tokens ?? usage?.promptTokens,
-      outputTokens: usage?.completion_tokens ?? usage?.completionTokens,
-    };
+    await ensureWarmLlmLane();
+    const warm = getWarmLlmRoute();
+    const attempts = [
+      warm,
+      ...(warm.model !== SIE_WARM_LLM_MODEL
+        ? [{ model: SIE_WARM_LLM_MODEL, gpu: warm.gpu }]
+        : []),
+    ];
+
+    for (const attempt of attempts) {
+      client = createSieClient({ gpu: attempt.gpu });
+      try {
+        const result = await client.generate(attempt.model, userPrompt, {
+          maxNewTokens,
+          temperature: 0,
+          gpu: attempt.gpu,
+          waitForCapacity: true,
+        });
+        const usage = result.usage;
+        return {
+          text: result.text,
+          promptTokens: usage?.promptTokens,
+          outputTokens: usage?.completionTokens,
+        };
+      } catch (err) {
+        logger.warn(
+          {
+            err: err instanceof Error ? err.message : String(err),
+            model: attempt.model,
+            gpu: attempt.gpu,
+          },
+          "SIE LLM generation attempt failed",
+        );
+      } finally {
+        await closeSieClient(client);
+        client = undefined;
+      }
+    }
+
+    return null;
   } catch (err) {
     logger.warn(
       { err: err instanceof Error ? err.message : String(err) },
@@ -244,11 +282,7 @@ async function callSie(
     );
     return null;
   } finally {
-    try {
-      await client?.close();
-    } catch {
-      // ignore
-    }
+    await closeSieClient(client);
   }
 }
 
@@ -421,25 +455,8 @@ async function completeJson(
 ): Promise<{ raw: unknown; meta: LLMCallMeta } | null> {
   const prompt = buildPrompt(ctx, task, jsonShape);
 
-  const gemini = await callGemini(prompt, 2048, geminiSchema);
-  if (gemini) {
-    try {
-      return {
-        raw: extractJson(gemini.text),
-        meta: {
-          source: "gemini",
-          promptTokens: gemini.promptTokens,
-          outputTokens: gemini.outputTokens,
-          fallbackUsed: false,
-        },
-      };
-    } catch {
-      logger.warn({ raw: gemini.text.slice(0, 400) }, "Invalid JSON from Gemini");
-    }
-  }
-
-  if (!hasGemini()) {
-    const sie = await callSie(prompt);
+  if (hasSieLlm()) {
+    const sie = await callSie(prompt, 2048, jsonShape);
     if (sie) {
       try {
         return {
@@ -453,6 +470,25 @@ async function completeJson(
         };
       } catch {
         logger.warn({ raw: sie.text.slice(0, 400) }, "Invalid JSON from SIE LLM");
+      }
+    }
+  }
+
+  if (hasGemini()) {
+    const gemini = await callGemini(prompt, 2048, geminiSchema);
+    if (gemini) {
+      try {
+        return {
+          raw: extractJson(gemini.text),
+          meta: {
+            source: "gemini",
+            promptTokens: gemini.promptTokens,
+            outputTokens: gemini.outputTokens,
+            fallbackUsed: hasSieLlm(),
+          },
+        };
+      } catch {
+        logger.warn({ raw: gemini.text.slice(0, 400) }, "Invalid JSON from Gemini");
       }
     }
   }
@@ -894,10 +930,10 @@ export async function generateAction(
   const source: GeneratedAction["source"] =
     email.source === "fallback"
       ? "fallback"
-      : email.source === "gemini"
-        ? "gemini"
-        : email.source === "sie"
-          ? "sie"
+      : email.source === "sie"
+        ? "sie"
+        : email.source === "gemini"
+          ? "gemini"
           : email.source === "anthropic"
             ? "anthropic"
             : "openai";

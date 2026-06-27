@@ -1,11 +1,14 @@
 import type { EnrichmentResult } from "@leadloop/shared";
-import { SIEClient } from "@superlinked/sie-sdk";
 import { env } from "../lib/env.js";
 import { createLogger } from "../lib/logger.js";
+import {
+  closeSieClient,
+  createSieClient,
+  isSieConfigured,
+  SIE_ENCODE_MODEL,
+} from "../lib/sie-client.js";
 
 const logger = createLogger("scoring");
-
-const ENCODE_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
 
 export type ScoringBand = "hot" | "warm" | "cold";
 
@@ -88,24 +91,20 @@ async function scoreWithSuperlinked(
   enrichment: EnrichmentResult,
   profileText: string,
 ): Promise<ScoringResult | null> {
-  if (!env.sieEndpoint) {
-    logger.warn("Missing SIE_ENDPOINT — skipping Superlinked scoring");
+  if (!isSieConfigured()) {
+    logger.warn("SIE cluster not configured — skipping Superlinked scoring");
     return null;
   }
 
-  let client: SIEClient | undefined;
+  let client: ReturnType<typeof createSieClient> | undefined;
 
   try {
-    client = new SIEClient(env.sieEndpoint, {
-      apiKey: env.sieApiKey || undefined,
-      timeout: 120_000,
-    });
-
+    client = createSieClient();
     const icpText = env.icpDescription;
 
     const [leadEncoded, icpEncoded] = await Promise.all([
-      client.encode(ENCODE_MODEL, { text: profileText }),
-      client.encode(ENCODE_MODEL, { text: icpText }),
+      client.encode(SIE_ENCODE_MODEL, { text: profileText }, { waitForCapacity: true }),
+      client.encode(SIE_ENCODE_MODEL, { text: icpText }, { waitForCapacity: true }),
     ]);
 
     const leadDense = leadEncoded.dense;
@@ -147,11 +146,7 @@ async function scoreWithSuperlinked(
     logger.warn({ err: detail }, "Superlinked SIE scoring failed");
     return null;
   } finally {
-    try {
-      await client?.close();
-    } catch {
-      // ignore close errors
-    }
+    await closeSieClient(client);
   }
 }
 

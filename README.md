@@ -43,7 +43,7 @@ All variables below are **required at startup**. Copy `.env.example` and fill ev
 | `ATTIO_WORKSPACE_SLUG` | Workspace slug for record URLs |
 | `OPENAI_API_KEY` or `GROQ_API_KEY` | At least one LLM provider |
 | `TAVILY_API_KEY` | Optional live enrichment; fixtures/placeholder used when absent |
-| `SIE_BASE_URL` | Superlinked SIE endpoint |
+| `SIE_ENDPOINT` + `SIE_API_KEY` | Superlinked hackathon GPU cluster |
 | `SLNG_API_KEY`, `SLNG_AGENT_ID` | SLNG voice agent |
 | `CORS_ORIGIN` | Frontend origin (e.g. `http://localhost:3000`) |
 | `NEXT_PUBLIC_API_URL` | Public API URL for frontend |
@@ -126,14 +126,26 @@ pnpm dev
 - API: http://localhost:3001
 - Web: http://localhost:3000
 
-### Superlinked SIE (optional)
+### Superlinked SIE (hackathon cluster)
+
+LeadLoop uses the **Superlinked hackathon GPU cluster** for ICP embedding scoring and optional open-model generation. No local Docker required.
 
 ```bash
-docker compose -f docker-compose.sie.yml up -d
-# Set SIE_BASE_URL=http://localhost:8080 in .env
+# .env — already in .env.example
+SIE_ENDPOINT=http://a64e1dc31032c40e4b1e9330a1273c83-1760332796.us-east-2.elb.amazonaws.com:8080
+SIE_API_KEY=SL-...          # message Filip on Discord
+SIE_ENCODE_GPU=l4           # embeddings / rerankers
+SIE_LLM_MODEL=Qwen/Qwen3.5-4B
+SIE_LLM_GPU=rtx6000         # hot generation lane
+
+# Verify cluster connectivity
+pnpm --filter @leadloop/api sie:test
+pnpm --filter @leadloop/api scoring:test hot
 ```
 
-Without SIE, scoring uses a deterministic mock fallback.
+Without SIE, scoring uses a deterministic heuristic fallback.
+
+Optional local Docker (`docker-compose.sie.yml`) is only needed if the cluster is unreachable.
 
 ### n8n workflow
 
