@@ -21,7 +21,7 @@ export function WorkspaceShell() {
   return (
     <div
       id="main-content"
-      className="min-h-full px-6 py-8 md:px-10 md:py-10 lg:px-12 lg:py-12"
+      className="min-h-full px-4 py-6 sm:px-6 md:px-8 md:py-8"
       aria-label="Active lead workflow"
     >
       {apiOnline === false && (

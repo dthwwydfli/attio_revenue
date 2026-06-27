@@ -6,11 +6,17 @@ import {
   type LeadStatusResponse,
 } from "@leadloop/shared";
 import { env } from "../lib/env.js";
-import { getIntegrationHealth } from "../lib/integrations.js";
+import { getIntegrationHealthAsync } from "../lib/integrations.js";
+import {
+  buildBrowserVoiceGreeting,
+  isSlngCreditError,
+  replyBrowserVoice,
+  synthesizeBrowserVoiceTts,
+} from "../services/voice-browser.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
 import { approveLead, ApprovalError } from "../services/approve.js";
-import { handleSlngWebhook, validateSlngWebhookSecret } from "../services/slng.js";
+import { handleSlngWebhook, validateSlngWebhookSecret, startVoiceSessionForLead } from "../services/slng.js";
 import { appendEvent, updateRun } from "../store.js";
 import { createNote } from "../services/attio.js";
 import type { HealthResponse } from "../types/global.js";
@@ -19,12 +25,23 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", async (): Promise<HealthResponse> => ({
     ok: true,
     uptime: process.uptime(),
-    ...getIntegrationHealth(),
+    ...(await getIntegrationHealthAsync()),
   }));
 
   app.get("/icp", async () => ({
     description: env.icpDescription,
   }));
+
+  app.get("/integrations/n8n/test", async (_request, reply) => {
+    if (!isN8nConfigured()) {
+      return reply.status(503).send({
+        ok: false,
+        detail: "N8N_WEBHOOK_URL not configured",
+      });
+    }
+    const result = await testN8nWebhook();
+    return reply.status(result.ok ? 200 : 502).send(result);
+  });
 
   app.post("/leads/process", async (request, reply) => {
     const parsed = LeadInputSchema.safeParse(request.body);
@@ -72,6 +89,66 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
         return reply.status(err.statusCode).send({ error: err.message });
       }
       throw err;
+    }
+  });
+
+  app.post<{ Params: { id: string } }>("/leads/:id/voice-browser/start", async (request, reply) => {
+    const run = getRun(request.params.id);
+    if (!run) return reply.status(404).send({ error: "Lead run not found" });
+
+    const fallbackReason = isSlngCreditError(run.slng?.transcriptSnippet ?? "")
+      ? run.slng?.transcriptSnippet
+      : "SLNG LiveKit sessions unavailable — using browser speech for two-way voice.";
+
+    return {
+      mode: "browser" as const,
+      greeting: buildBrowserVoiceGreeting(run),
+      fallbackReason,
+    };
+  });
+
+  app.post<{ Params: { id: string } }>("/leads/:id/voice-browser/message", async (request, reply) => {
+    const run = getRun(request.params.id);
+    if (!run) return reply.status(404).send({ error: "Lead run not found" });
+
+    const body = request.body as { message?: string };
+    if (!body?.message?.trim()) {
+      return reply.status(400).send({ error: "message is required" });
+    }
+
+    const replyText = await replyBrowserVoice(run, body.message);
+    return { reply: replyText };
+  });
+
+  app.post<{ Params: { id: string } }>("/leads/:id/voice-browser/tts", async (request, reply) => {
+    const body = request.body as { text?: string };
+    if (!body?.text?.trim()) {
+      return reply.status(400).send({ error: "text is required" });
+    }
+    const audioBase64 = await synthesizeBrowserVoiceTts(body.text);
+    if (!audioBase64) {
+      return reply.status(503).send({ error: "TTS unavailable" });
+    }
+    return { audioBase64, mimeType: "audio/mpeg" };
+  });
+
+  app.post<{ Params: { id: string } }>("/leads/:id/voice-session", async (request, reply) => {
+    const run = getRun(request.params.id);
+    if (!run) return reply.status(404).send({ error: "Lead run not found" });
+    if (run.slng?.status === "skipped" && run.score?.band !== "hot") {
+      return reply.status(400).send({ error: "Voice was skipped for this lead" });
+    }
+    if (!run.action) {
+      return reply.status(400).send({ error: "Lead has no generated action for voice session" });
+    }
+
+    try {
+      const slng = await startVoiceSessionForLead(run);
+      updateRun(run.id, { slng });
+      return slng;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.status(502).send({ error: message });
     }
   });
 

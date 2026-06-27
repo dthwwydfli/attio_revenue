@@ -33,10 +33,10 @@ export function CenterPanel({ run, isLoading, isApproving, approveError, onAppro
   }
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto w-full max-w-6xl">
       <ActiveLeadPanel run={run} />
 
-      <div className="mt-10">
+      <div className="mt-8">
         <WorkspaceTabs
           active={activeTab}
           onChange={setActiveTab}
@@ -49,17 +49,24 @@ export function CenterPanel({ run, isLoading, isApproving, approveError, onAppro
           id="panel-overview"
           role="tabpanel"
           aria-labelledby="tab-overview"
-          className="mx-auto mt-12 max-w-3xl space-y-10"
+          className="mt-8"
         >
-          <WorkspaceStepper run={run} />
-          <MainStatusCard run={run} />
-          <EmailDraftCard action={run.action} band={run.score?.band} />
-          <ActionCard
-            run={run}
-            isApproving={isApproving}
-            approveError={approveError}
-            onApprove={onApprove}
-          />
+          <div className="space-y-8">
+            <WorkspaceStepper run={run} />
+            <MainStatusCard run={run} />
+          </div>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] lg:items-start xl:gap-10">
+            <EmailDraftCard action={run.action} band={run.score?.band} />
+            <div className="lg:sticky lg:top-8">
+              <ActionCard
+                run={run}
+                isApproving={isApproving}
+                approveError={approveError}
+                onApprove={onApprove}
+              />
+            </div>
+          </div>
         </div>
       )}
 

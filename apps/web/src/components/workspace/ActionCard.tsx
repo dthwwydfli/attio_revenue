@@ -70,7 +70,7 @@ export function ActionCard({ run, isApproving, approveError, onApprove }: Action
   return (
     <div
       className={cn(
-        "glass-panel rounded-xl border p-6 md:p-8",
+        "glass-panel rounded-xl p-6",
         failed ? "border-red-500/20 bg-red-500/5" : config.accent,
       )}
     >

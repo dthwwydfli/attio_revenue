@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { testN8nWebhook, isN8nConfigured } from "../services/n8n.js";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
@@ -166,6 +167,28 @@ async function testSLNG() {
   }
 }
 
+async function testN8n() {
+  if (!isN8nConfigured()) {
+    skip("n8n webhook", "N8N_WEBHOOK_URL not set in .env.local");
+    return;
+  }
+  try {
+    const result = await testN8nWebhook();
+    if (result.ok) {
+      pass("n8n webhook", `HTTP ${result.status} — ${result.detail.slice(0, 100)}`);
+    } else if (result.status === 404) {
+      fail(
+        "n8n webhook",
+        "HTTP 404 — import workflows/pipeline-callback.json in n8n and activate the workflow",
+      );
+    } else {
+      fail("n8n webhook", `HTTP ${result.status}: ${result.detail}`);
+    }
+  } catch (err) {
+    fail("n8n webhook", err instanceof Error ? err.message : String(err));
+  }
+}
+
 async function testHttpRoutes() {
   const base = `http://localhost:${env.port}`;
 
@@ -252,8 +275,9 @@ function render(): string {
   md += `2. **Tavily** — PASS means live web enrichment works. Check \`apps/api/src/fixtures/enrichment/acme-corp.json\` for cached data.\n`;
   md += `3. **Serper** — PASS means fallback search API works if Tavily is down.\n`;
   md += `4. **Superlinked SIE** — PASS means local SIE Docker is running. SKIP falls back to heuristic scoring.\n`;
-  md += `5. **HTTP /health** — Open http://localhost:3001/health in your browser. Should show integration flags.\n`;
-  md += `6. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
+  md += `5. **HTTP /health** — Open http://localhost:${env.port}/health in your browser. Should show integration flags.\n`;
+  md += `6. **n8n** — PASS means pipeline-callback webhook is live. Import workflows/pipeline-callback.json and activate in n8n.\n`;
+  md += `7. **SKIP** — Add real keys to \`.env.local\` for OpenAI, SLNG, or start SIE Docker for those tests to pass.\n`;
 
   return md;
 }
@@ -266,6 +290,7 @@ async function main() {
   await testScoring();
   await testOpenAI();
   await testSLNG();
+  await testN8n();
   await testHttpRoutes();
 
   const md = render();

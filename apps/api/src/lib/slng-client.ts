@@ -8,14 +8,21 @@ const GATEWAY_BASE = "https://api.slng.ai/v1";
 export const LEADLOOP_SLNG_AGENT = {
   name: "LeadLoop Inbound SDR",
   system_prompt:
-    "You are a concise SDR for LeadLoop. Qualify inbound leads about agentic CRM and Attio integration. " +
-    "Confirm their team size, timeline, and interest in autonomous lead routing. Keep replies to one or two sentences.",
-  greeting: "Hi {{lead_name}}, thanks for reaching out about LeadLoop for {{company_name}}.",
+    "You are a concise inbound SDR for LeadLoop, an autonomous lead router for Attio CRM. " +
+    "Your ideal customer profile (ICP): B2B SaaS companies, 50-500 employees, US/EU, buying intent for CRM automation, " +
+    "VP Sales or RevOps leaders evaluating agentic CRM tools. " +
+    "In every reply, relate the conversation to this ICP — confirm company size, region, CRM automation buying intent, " +
+    "and whether they are a VP Sales or RevOps leader. Ask about timeline and interest in autonomous inbound routing with Attio. " +
+    "Keep replies to one or two sentences.",
+  greeting:
+    "Hi {{lead_name}}, thanks for reaching out about LeadLoop for {{company_name}}. " +
+    "We help RevOps and sales leaders automate inbound CRM routing — quick question on your team size and timeline?",
   language: "en",
   template_defaults: {
     lead_name: "there",
     company_name: "your company",
-    pitch_context: "inbound CRM automation",
+    pitch_context:
+      "B2B SaaS, 50-500 employees, US/EU, buying intent for CRM automation, VP Sales or RevOps evaluating agentic CRM",
   },
   models: {
     stt: "slng/deepgram/nova:3-en",
@@ -151,6 +158,47 @@ export async function resolveSlngAgentId(): Promise<string | null> {
     cachedAgentId = null;
     return null;
   }
+}
+
+export function buildLeadLoopVoiceSystemPrompt(icpDescription: string): string {
+  return (
+    "You are a concise inbound SDR for LeadLoop, an autonomous lead router for Attio CRM. " +
+    `Your ideal customer profile (ICP): ${icpDescription} ` +
+    "In every reply, relate the conversation to this ICP — confirm company size, region, CRM automation buying intent, " +
+    "and whether they are a VP Sales or RevOps leader evaluating agentic CRM tools. " +
+    "Ask about timeline and interest in autonomous inbound routing with Attio integration. " +
+    "Keep replies to one or two sentences."
+  );
+}
+
+let agentIcpPromptSynced = false;
+
+/** Sync dashboard agent prompt with ICP from env (best-effort, once per process). */
+export async function ensureSlngAgentIcpPrompt(): Promise<void> {
+  if (agentIcpPromptSynced || !isSlngAgentConfigured()) return;
+
+  const system_prompt = buildLeadLoopVoiceSystemPrompt(env.icpDescription);
+  const greeting =
+    "Hi {{lead_name}}, thanks for reaching out about LeadLoop for {{company_name}}. " +
+    "We help RevOps and sales leaders automate inbound CRM routing — what's your team size and timeline?";
+
+  const res = await agentsFetch(`/agents/${env.slngAgentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ system_prompt, greeting }),
+  });
+
+  if (res.ok) {
+    agentIcpPromptSynced = true;
+    logger.info("Synced SLNG agent prompt with ICP");
+    return;
+  }
+
+  const text = await res.text();
+  logger.warn(
+    { status: res.status, body: text.slice(0, 200) },
+    "Could not PATCH SLNG agent ICP prompt — using pitch_context at session time",
+  );
 }
 
 export async function ensureLeadLoopSlngAgent(): Promise<string> {

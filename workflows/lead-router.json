@@ -18,7 +18,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.LEADLOOP_API_URL || 'http://localhost:3001' }}/leads/process",
+        "url": "={{ $env.LEADLOOP_API_URL || 'http://localhost:3011' }}/leads/process",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ name: $json.body.name || $json.name, email: $json.body.email || $json.email, company: $json.body.company || $json.company, role: $json.body.role || $json.role, message: $json.body.message || $json.message, phone: $json.body.phone || $json.phone, source: $json.body.source || $json.source || 'n8n_webhook' }) }}",

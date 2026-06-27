@@ -66,11 +66,13 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
         </button>
       </div>
 
-      <p className="text-sm font-medium">{action.replySubject}</p>
+      <p className="text-sm font-medium text-foreground">{action.replySubject}</p>
 
-      <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted">
-        {expanded ? body : previewBody(body)}
-      </pre>
+      <div className="mt-3 rounded-lg border border-white/5 bg-black/20 px-4 py-3">
+        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-muted">
+          {expanded ? body : previewBody(body)}
+        </pre>
+      </div>
 
       {hasMore && (
         <button
@@ -97,10 +99,13 @@ export function EmailDraftCard({ action, band, className }: EmailDraftCardProps)
       )}
 
       {action.taskTitle && (
-        <div className="mt-5 border-t border-white/5 pt-4 text-sm">
-          <p className="font-medium">{action.taskTitle}</p>
+        <div className="mt-5 border-t border-white/5 pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Attio task</p>
+          <p className="mt-2 text-sm font-medium text-foreground">{action.taskTitle}</p>
           {action.taskBody && (
-            <p className="mt-1 text-muted">{action.taskBody}</p>
+            <p className="mt-2 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-xs leading-relaxed text-muted">
+              {action.taskBody}
+            </p>
           )}
         </div>
       )}

@@ -20,6 +20,7 @@ const EnvSchema = z
     GEMINI_API_KEY: z.string().optional(),
     GEMINI_MODEL: z.string().optional(),
     TAVILY_API_KEY: z.string().optional(),
+    SERPER_API_KEY: z.string().optional(),
     SIE_BASE_URL: z.string().url("SIE_BASE_URL must be a valid URL").optional(),
     SIE_ENDPOINT: z.string().url("SIE_ENDPOINT must be a valid URL").optional(),
     SIE_API_KEY: z.string().optional(),
@@ -39,6 +40,8 @@ const EnvSchema = z
     SLNG_WEBHOOK_SECRET: z.string().optional(),
     N8N_WEBHOOK_URL: z.string().url("N8N_WEBHOOK_URL must be a valid URL").optional(),
     N8N_WEBHOOK_SECRET: z.string().optional(),
+    N8N_MCP_URL: z.string().url("N8N_MCP_URL must be a valid URL").optional(),
+    N8N_MCP_TOKEN: z.string().optional(),
     NODE_ENV: z.enum(["development", "production", "test"]).optional(),
   })
   .superRefine((data, ctx) => {
@@ -92,6 +95,7 @@ export const env = {
   geminiApiKey: parsed.GEMINI_API_KEY ?? "",
   geminiModel: parsed.GEMINI_MODEL ?? "gemini-3.5-flash",
   tavilyApiKey: parsed.TAVILY_API_KEY ?? "",
+  serperApiKey: parsed.SERPER_API_KEY ?? "",
   sieEndpoint: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "",
   sieApiKey: parsed.SIE_API_KEY ?? "",
   sieBaseUrl: parsed.SIE_ENDPOINT ?? parsed.SIE_BASE_URL ?? "",
@@ -110,6 +114,8 @@ export const env = {
   slngWebhookSecret: parsed.SLNG_WEBHOOK_SECRET ?? "",
   n8nWebhookUrl: parsed.N8N_WEBHOOK_URL ?? "",
   n8nWebhookSecret: parsed.N8N_WEBHOOK_SECRET ?? "",
+  n8nMcpUrl: parsed.N8N_MCP_URL ?? "",
+  n8nMcpToken: parsed.N8N_MCP_TOKEN ?? "",
 } as const;
 
 export type Env = typeof env;

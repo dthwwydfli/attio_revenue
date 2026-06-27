@@ -9,11 +9,13 @@ function formatEmailBody(body: string): string {
 }
 
 function buildMailtoUrl(email: string, subject: string, body: string): string {
-  const params = new URLSearchParams({
-    subject,
-    body: formatEmailBody(body),
-  });
-  return `mailto:${email}?${params.toString()}`;
+  const formattedBody = formatEmailBody(body);
+  // encodeURIComponent uses %20 for spaces — many mail clients mishandle + from URLSearchParams.
+  const query = [
+    `subject=${encodeURIComponent(subject)}`,
+    `body=${encodeURIComponent(formattedBody)}`,
+  ].join("&");
+  return `mailto:${email}?${query}`;
 }
 
 async function writeApprovalToAttio(

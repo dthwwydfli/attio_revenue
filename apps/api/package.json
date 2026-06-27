@@ -12,6 +12,7 @@
     "attio:setup": "tsx src/scripts/attio-setup.ts",
     "attio:test": "tsx src/scripts/attio-test.ts",
     "enrich:test": "tsx src/scripts/enrich-test.ts",
+    "serper:test": "tsx src/scripts/serper-test.ts",
     "scoring:test": "tsx src/scripts/scoring-test.ts",
     "sie:test": "tsx src/scripts/sie-test.ts",
     "sie:llm:test": "tsx src/scripts/sie-llm-test.ts",
@@ -19,6 +20,8 @@
     "slng:webhook:test": "tsx src/scripts/slng-webhook-test.ts",
     "slng:test": "tsx src/scripts/slng-test.ts",
     "slng:setup": "tsx src/scripts/slng-setup.ts",
+    "n8n:test": "tsx src/scripts/n8n-test.ts",
+    "n8n:setup": "tsx src/scripts/n8n-setup.ts",
     "test:apis": "tsx src/scripts/test-all-apis.ts"
   },
   "dependencies": {

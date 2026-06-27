@@ -25,6 +25,7 @@ import { enrichLead } from "./services/enrich.js";
 import { scoreLead, toScoreResult } from "./services/scoring.js";
 import { generateAction, generateCallScript } from "./services/llm.js";
 import { dispatchVoiceTouchpoint } from "./services/slng.js";
+import { notifyN8nPipeline } from "./services/n8n.js";
 
 function audit(step: PipelineStep, status: AuditEvent["status"], message?: string, durationMs?: number): AuditEvent {
   return {
@@ -285,6 +286,8 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     appendEvent(id, audit("completed", "completed", "Pipeline finished"));
 
     const finalRun = getRun(id)!;
+    notifyN8nPipeline(finalRun);
+
     return {
       leadRunId: id,
       status: "completed",
@@ -295,6 +298,8 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     const message = err instanceof Error ? err.message : "Unknown pipeline error";
     updateRun(id, { status: "failed", currentStep: "failed", error: message });
     appendEvent(id, audit("failed", "failed", message));
+    const failedRun = getRun(id);
+    if (failedRun) notifyN8nPipeline(failedRun);
     return { leadRunId: id, status: "failed" };
   }
 }

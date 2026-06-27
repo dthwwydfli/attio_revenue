@@ -145,12 +145,21 @@ Without SIE, scoring uses a deterministic heuristic fallback.
 
 Optional local Docker (`docker-compose.sie.yml`) is only needed if the cluster is unreachable.
 
-### n8n workflow
+### n8n workflows
+
+**Inbound (form → API):**
 
 1. Import [`workflows/lead-router.json`](workflows/lead-router.json) into n8n
-2. Set env var `LEADLOOP_API_URL` to your API URL
-3. Activate workflow and copy the production webhook URL
+2. Set env var `LEADLOOP_API_URL` to your API URL (e.g. `http://localhost:3011`)
+3. Activate workflow and copy the production webhook URL (`/webhook/inbound-lead`)
 4. POST lead JSON to the webhook, or connect your form
+
+**Outbound (API → n8n after pipeline completes):**
+
+1. Import [`workflows/pipeline-callback.json`](workflows/pipeline-callback.json) into n8n
+2. Activate workflow — production URL should match `N8N_WEBHOOK_URL` in `.env.local`
+3. Run `pnpm --filter @leadloop/api n8n:test` to verify connectivity
+4. `/health` shows `n8n: true` when `N8N_WEBHOOK_URL` is set
 
 Example payload:
 

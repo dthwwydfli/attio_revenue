@@ -1,10 +1,15 @@
-import type { LeadInput, GeneratedAction, SlngResult } from "@leadloop/shared";
+import type { EnrichmentResult, LeadInput, GeneratedAction, SlngResult } from "@leadloop/shared";
 import { env } from "../config.js";
+import { createLogger } from "../lib/logger.js";
+import { ensureSlngAgentIcpPrompt } from "../lib/slng-client.js";
 import type { LLMCallScriptResult } from "./llm.js";
+
+const logger = createLogger("slng");
 
 export interface SlngVoiceContext {
   leadRunId: string;
   callScript?: LLMCallScriptResult;
+  enrichment?: EnrichmentResult;
 }
 
 export function isSlngConfigured(): boolean {
@@ -20,22 +25,43 @@ function buildSlngArguments(
   input: LeadInput,
   action: GeneratedAction,
   ctx: SlngVoiceContext,
-): Record<string, string | string[]> {
-  const args: Record<string, string | string[]> = {
-    lead_name: input.name.split(" ")[0] ?? input.name,
-    company_name: input.company,
-    pitch_context: action.rationale.slice(0, 200),
-    lead_run_id: ctx.leadRunId,
-  };
+): Record<string, string> {
+  const parts: string[] = [
+    `LeadLoop ICP: ${env.icpDescription}`,
+    "Qualify this lead against the ICP and steer toward agentic CRM automation with Attio.",
+  ];
 
-  if (ctx.callScript) {
-    args.opening = ctx.callScript.opening;
-    args.pitch = ctx.callScript.pitch;
-    args.close = ctx.callScript.close;
-    args.objection_handlers = ctx.callScript.objectionHandlers;
+  if (input.role) {
+    parts.push(`Lead title: ${input.role}`);
   }
 
-  return args;
+  if (ctx.callScript) {
+    parts.push(ctx.callScript.opening, ctx.callScript.pitch, ctx.callScript.close);
+  } else {
+    parts.push(action.rationale);
+  }
+
+  if (ctx.enrichment?.employee_band) {
+    parts.push(`Company size: ${ctx.enrichment.employee_band}`);
+  }
+  if (ctx.enrichment?.industry) {
+    parts.push(`Industry: ${ctx.enrichment.industry}`);
+  }
+  if (ctx.enrichment?.description) {
+    parts.push(`Company: ${ctx.enrichment.description}`);
+  }
+  if (input.message) {
+    parts.push(`Inbound note: ${input.message.slice(0, 200)}`);
+  }
+
+  const pitchContext = parts.filter(Boolean).join(". ").slice(0, 900);
+
+  // Agent template only accepts lead_name, company_name, pitch_context (see slng-leadloop-agent.json).
+  return {
+    lead_name: input.name.split(" ")[0] ?? input.name,
+    company_name: input.company,
+    pitch_context: pitchContext,
+  };
 }
 
 function slngMetadata(ctx: SlngVoiceContext): { lead_run_id: string } {
@@ -54,12 +80,33 @@ export async function dispatchVoiceTouchpoint(
   if (isSlngConfigured()) {
     try {
       return await dispatchSlngWebSession(input, action, ctx);
-    } catch {
-      return mockSlngSession(input, ctx.leadRunId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn({ err: message, leadRunId: ctx.leadRunId }, "SLNG web session failed");
+      return {
+        status: "failed",
+        transcriptSnippet: message,
+      };
     }
   }
 
   return mockSlngSession(input, ctx.leadRunId);
+}
+
+function formatSlngError(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { detail?: string; message?: string };
+    const detail = parsed.detail ?? parsed.message ?? body;
+    if (status === 402 || detail.toLowerCase().includes("credit")) {
+      return "SLNG voice is unavailable — insufficient credits on your SLNG account. Top up at slng.ai and retry.";
+    }
+    if (status === 401 || status === 403) {
+      return "SLNG authentication failed — check SLNG_API_KEY and SLNG_AGENT_ID in .env.local.";
+    }
+    return `SLNG voice session failed (${status}): ${detail.slice(0, 200)}`;
+  } catch {
+    return `SLNG voice session failed (${status}): ${body.slice(0, 200)}`;
+  }
 }
 
 async function dispatchSlngWebSession(
@@ -85,7 +132,7 @@ async function dispatchSlngWebSession(
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`SLNG web session failed: ${res.status} ${text}`);
+    throw new Error(formatSlngError(res.status, text));
   }
 
   const json = (await res.json()) as {
@@ -98,6 +145,12 @@ async function dispatchSlngWebSession(
 
   const livekitUrl = json.livekit_url ?? json.livekit?.url;
   const livekitToken = json.livekit_token ?? json.livekit?.token;
+
+  if (!livekitUrl || !livekitToken) {
+    throw new Error(
+      `SLNG web session missing LiveKit credentials (url=${Boolean(livekitUrl)}, token=${Boolean(livekitToken)})`,
+    );
+  }
 
   return {
     status: "web_session_started",
@@ -172,6 +225,25 @@ export function handleSlngWebhook(payload: {
 export function validateSlngWebhookSecret(headerSecret: string | undefined): boolean {
   if (!env.slngWebhookSecret) return true;
   return headerSecret === env.slngWebhookSecret;
+}
+
+export async function startVoiceSessionForLead(run: {
+  id: string;
+  input: LeadInput;
+  action?: GeneratedAction;
+  enrichment?: EnrichmentResult;
+}): Promise<SlngResult> {
+  if (!run.action) {
+    throw new Error("Lead has no generated action for voice session");
+  }
+  if (!isSlngConfigured()) {
+    throw new Error("SLNG is not configured");
+  }
+  await ensureSlngAgentIcpPrompt().catch(() => undefined);
+  return dispatchSlngWebSession(run.input, run.action, {
+    leadRunId: run.id,
+    enrichment: run.enrichment,
+  });
 }
 
 export { dispatchSlngCall };
