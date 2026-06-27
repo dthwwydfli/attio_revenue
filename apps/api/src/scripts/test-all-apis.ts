@@ -3,6 +3,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import "../lib/env.js";
 import { env } from "../lib/env.js";
+import {
+  isSlngApiKeyConfigured,
+  listSlngAgents,
+  resolveSlngAgentId,
+  testSlngGatewayTts,
+} from "../lib/slng-client.js";
 import { assertCompany, assertPerson, createNote } from "../services/attio.js";
 import { enrichLead } from "../services/enrich.js";
 import { scoreLead, toScoreResult } from "../services/scoring.js";
@@ -146,35 +152,23 @@ async function testOpenAI() {
 }
 
 async function testSLNG() {
-  if (!env.slngApiKey || env.slngApiKey.includes("placeholder")) {
+  if (!isSlngApiKeyConfigured()) {
     skip("SLNG", "No real SLNG_API_KEY in .env.local — voice uses mock in pipeline");
     return;
   }
   try {
-    const listRes = await fetch("https://api.agents.slng.ai/v1/agents", {
-      headers: { Authorization: `Bearer ${env.slngApiKey}` },
-    });
-    if (!listRes.ok) {
-      fail("SLNG", `API key rejected — HTTP ${listRes.status}: ${(await listRes.text()).slice(0, 150)}`);
-      return;
+    await testSlngGatewayTts();
+    const agentId = await resolveSlngAgentId();
+    if (agentId) {
+      pass("SLNG", `Gateway TTS OK; voice agent=${agentId}`);
+    } else {
+      const agents = await listSlngAgents();
+      if (agents.length === 0) {
+        pass("SLNG", "API key + gateway TTS OK; run pnpm slng:setup to create voice agent");
+      } else {
+        fail("SLNG", "Agents exist but could not resolve agent ID");
+      }
     }
-
-    const agents = (await listRes.json()) as Array<{ id?: string }>;
-    const agentId =
-      !env.slngAgentId.includes("placeholder") && env.slngAgentId
-        ? env.slngAgentId
-        : agents[0]?.id;
-
-    if (!agentId) {
-      pass("SLNG", "API key valid; no agents in account yet (voice uses mock until agent created)");
-      return;
-    }
-
-    const res = await fetch(`https://api.agents.slng.ai/v1/agents/${agentId}`, {
-      headers: { Authorization: `Bearer ${env.slngApiKey}` },
-    });
-    if (res.ok) pass("SLNG", `HTTP ${res.status}, agent=${agentId}`);
-    else fail("SLNG", `HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
   } catch (err) {
     fail("SLNG", err instanceof Error ? err.message : String(err));
   }

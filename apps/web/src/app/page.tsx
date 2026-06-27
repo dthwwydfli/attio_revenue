@@ -2,7 +2,7 @@ import Link from "next/link";
 import { apiFetch } from "@/lib/api-client";
 
 export default async function HomePage() {
-  let health: { ok?: boolean } = {};
+  let health: { ok?: boolean; slng?: boolean; slngAgent?: boolean } = {};
   try {
     health = await apiFetch("/health");
   } catch {
@@ -43,13 +43,19 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-4 text-sm">
+      <section className="rounded-lg border border-border bg-card p-4 text-sm space-y-1">
         <p>
           API status:{" "}
           <span className={health.ok ? "text-accent" : "text-red-400"}>
             {health.ok ? "online" : "offline — start with pnpm dev:api"}
           </span>
         </p>
+        {health.ok && (
+          <p className="text-muted">
+            SLNG: {health.slng ? "API key OK" : "not configured"}
+            {health.slngAgent ? " · voice agent ready" : health.slng ? " · create agent with pnpm slng:setup" : ""}
+          </p>
+        )}
       </section>
 
       <section className="flex flex-wrap gap-4 text-xs text-muted uppercase tracking-wide">

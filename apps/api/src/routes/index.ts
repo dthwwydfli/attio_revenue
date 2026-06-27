@@ -1,21 +1,26 @@
 import type { FastifyInstance } from "fastify";
 import { DemoScenarioSchema, DEMO_LEADS, type LeadStatusResponse } from "@leadloop/shared";
 import { env } from "../lib/env.js";
+import { isSlngApiKeyConfigured, resolveSlngAgentId } from "../lib/slng-client.js";
 import { processDemoLead } from "../pipeline.js";
 import { getRun, listRuns } from "../store.js";
 import type { HealthResponse } from "../types/global.js";
 import { processLeadRoute } from "./leads/process.js";
 import { slngWebhookRoute } from "./webhooks/slng.js";
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async (): Promise<HealthResponse> => ({
-    ok: true,
-    uptime: process.uptime(),
-    attio: Boolean(env.attioApiKey),
-    tavily: Boolean(env.tavilyApiKey),
-    openai: Boolean(env.openaiApiKey),
-    slng: Boolean(env.slngApiKey && env.slngAgentId),
-    sie: env.sieEndpoint,
-  }));
+  app.get("/health", async (): Promise<HealthResponse> => {
+    const slngAgent = isSlngApiKeyConfigured() ? Boolean(await resolveSlngAgentId()) : false;
+    return {
+      ok: true,
+      uptime: process.uptime(),
+      attio: Boolean(env.attioApiKey),
+      tavily: Boolean(env.tavilyApiKey),
+      openai: Boolean(env.openaiApiKey),
+      slng: isSlngApiKeyConfigured(),
+      slngAgent,
+      sie: env.sieEndpoint,
+    };
+  });
 
   app.get("/icp", async () => ({
     description: env.icpDescription,

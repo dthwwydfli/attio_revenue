@@ -18,6 +18,7 @@
     "llm:test": "tsx src/scripts/llm-test.ts",
     "slng:webhook:test": "tsx src/scripts/slng-webhook-test.ts",
     "slng:test": "tsx src/scripts/slng-test.ts",
+    "slng:setup": "tsx src/scripts/slng-setup.ts",
     "test:apis": "tsx src/scripts/test-all-apis.ts"
   },
   "dependencies": {

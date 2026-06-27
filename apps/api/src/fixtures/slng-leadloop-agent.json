@@ -1,0 +1,22 @@
+{
+  "name": "LeadLoop Inbound SDR",
+  "system_prompt": "You are a concise SDR for LeadLoop. Qualify inbound leads about agentic CRM and Attio integration. Confirm their team size, timeline, and interest in autonomous lead routing. Keep replies to one or two sentences.",
+  "greeting": "Hi {{lead_name}}, thanks for reaching out about LeadLoop for {{company_name}}.",
+  "language": "en",
+  "region": "eu-central",
+  "models": {
+    "stt": "slng/deepgram/nova:3-en",
+    "tts": "slng/rime/arcana:3-en",
+    "tts_voice": "astra"
+  },
+  "template_defaults": {
+    "lead_name": "there",
+    "company_name": "your company",
+    "pitch_context": "inbound CRM automation"
+  },
+  "template_variables": {
+    "lead_name": { "required": true },
+    "company_name": { "required": true },
+    "pitch_context": { "required": false }
+  }
+}

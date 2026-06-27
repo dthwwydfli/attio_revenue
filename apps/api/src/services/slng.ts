@@ -1,5 +1,13 @@
 import type { LeadInput, GeneratedAction, SlngResult } from "@leadloop/shared";
 import { env } from "../config.js";
+import {
+  isSlngApiKeyConfigured,
+  resolveSlngAgentId,
+  startSlngWebSession,
+} from "../lib/slng-client.js";
+import { createLogger } from "../lib/logger.js";
+
+const logger = createLogger("slng");
 
 export async function dispatchVoiceTouchpoint(
   input: LeadInput,
@@ -9,10 +17,19 @@ export async function dispatchVoiceTouchpoint(
     return { status: "skipped" };
   }
 
-  if (env.slngApiKey && env.slngAgentId) {
+  if (isSlngApiKeyConfigured()) {
     try {
-      return await dispatchSlngWebSession(input, action);
-    } catch {
+      const agentId = await resolveSlngAgentId();
+      if (!agentId) {
+        logger.warn("SLNG API key set but no voice agent found — using demo mock");
+        return mockSlngSession(input);
+      }
+      return await dispatchSlngWebSession(agentId, input, action);
+    } catch (err) {
+      logger.warn(
+        { err: err instanceof Error ? err.message : String(err) },
+        "SLNG dispatch failed — using demo mock",
+      );
       return mockSlngSession(input);
     }
   }
@@ -25,43 +42,20 @@ function scoreBandRequiresVoice(_input: LeadInput): boolean {
 }
 
 async function dispatchSlngWebSession(
+  agentId: string,
   input: LeadInput,
   action: GeneratedAction,
 ): Promise<SlngResult> {
-  const res = await fetch(
-    `https://api.agents.slng.ai/v1/agents/${env.slngAgentId}/web-sessions`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.slngApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        arguments: {
-          lead_name: input.name.split(" ")[0],
-          company_name: input.company,
-          pitch_context: action.rationale.slice(0, 200),
-        },
-        participant_name: input.name,
-      }),
-    },
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`SLNG web session failed: ${res.status} ${text}`);
-  }
-
-  const json = (await res.json()) as {
-    call_id?: string;
-    livekit?: { url?: string };
-    room_name?: string;
-  };
+  const session = await startSlngWebSession(agentId, {
+    name: input.name,
+    company: input.company,
+    pitchContext: action.rationale.slice(0, 200),
+  });
 
   return {
     status: "web_session_started",
-    callId: json.call_id,
-    roomUrl: json.livekit?.url,
+    callId: session.callId,
+    roomUrl: session.roomUrl,
     transcriptSnippet: `Voice agent session started for ${input.name} at ${input.company}.`,
   };
 }
@@ -71,8 +65,13 @@ async function dispatchSlngCall(input: LeadInput, action: GeneratedAction): Prom
     return { status: "skipped" };
   }
 
+  const agentId = await resolveSlngAgentId();
+  if (!agentId) {
+    throw new Error("No SLNG agent available for outbound call");
+  }
+
   const res = await fetch(
-    `https://api.agents.slng.ai/v1/agents/${env.slngAgentId}/calls`,
+    `https://api.agents.slng.ai/v1/agents/${agentId}/calls`,
     {
       method: "POST",
       headers: {

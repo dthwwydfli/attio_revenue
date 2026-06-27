@@ -5,6 +5,7 @@ export interface HealthResponse {
   tavily: boolean;
   openai: boolean;
   slng: boolean;
+  slngAgent: boolean;
   sie: string;
 }
 
