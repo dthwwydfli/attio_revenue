@@ -3,7 +3,6 @@ import { HeroPreviewCard } from "./HeroPreviewCard";
 import { ReplayShortcuts } from "./ReplayShortcuts";
 import { SectionLabel } from "./SectionLabel";
 import { Button } from "@/components/ui/Button";
-import { cn } from "@/lib/utils";
 
 interface HeroSectionProps {
   apiOnline?: boolean;
@@ -37,18 +36,9 @@ export function HeroSection({ apiOnline }: HeroSectionProps) {
           </div>
 
           {apiOnline !== undefined && (
-            <div className="flex items-center gap-2 text-xs text-muted">
-              <span
-                className={cn(
-                  "h-2 w-2 rounded-full",
-                  apiOnline ? "bg-accent" : "bg-red-400",
-                )}
-                aria-hidden
-              />
-              <span>
-                API {apiOnline ? "online" : "offline. Start with pnpm dev:api"}
-              </span>
-            </div>
+            <p className="text-xs text-muted">
+              API {apiOnline ? "online" : "offline. Start with pnpm dev:api"}
+            </p>
           )}
 
           <ReplayShortcuts />

@@ -43,7 +43,9 @@ export function HeroPreviewCard() {
                 {isDone ? (
                   <CheckCircle2 className="h-3 w-3" aria-hidden />
                 ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                  <span className="text-[10px] opacity-60" aria-hidden>
+                    ·
+                  </span>
                 )}
                 {step}
               </div>
@@ -65,11 +67,7 @@ export function HeroPreviewCard() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-2 border-t border-white/5 pt-4 text-xs text-muted">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
-          </span>
+        <div className="mt-4 border-t border-white/5 pt-4 text-xs text-muted">
           Agent loop running · Attio writeback pending
         </div>
       </div>

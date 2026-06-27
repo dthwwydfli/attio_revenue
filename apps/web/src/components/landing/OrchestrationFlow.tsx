@@ -16,7 +16,7 @@ interface FlowNode {
 const byId = (id: string) => WORKFLOW_NODES.find((n) => n.id === id)!;
 
 // The real pipeline is sequential: a webhook hits n8n, which calls the LeadLoop
-// API; the API then runs enrichment → scoring → voice → Attio writeback in order.
+// API; the API then runs enrichment, scoring, voice, and Attio writeback in order.
 const ORDER = ["webhook", "n8n", "enrich", "superlinked", "slng", "attio"] as const;
 
 const NODES: FlowNode[] = ORDER.map((id, i) => ({
@@ -37,7 +37,7 @@ const TRACK_Y = NODES[0].y * VH;
 
 const CYCLE = 6;
 // The keyframe lights the card at 8% of its cycle; offset each node so its lit
-// moment coincides with the green band (which sweeps left→right) reaching it.
+// moment coincides with the highlight band (which sweeps left to right) reaching it.
 function nodeDelay(i: number) {
   const f = NODES[i].x;
   const mod = (((0.08 - f) % 1) + 1) % 1;
@@ -83,15 +83,15 @@ export function OrchestrationFlow() {
         aria-hidden
       >
         <defs>
-          {/* A narrow green band that sweeps across, lighting dashes one by one */}
+          {/* A narrow accent band that sweeps across, lighting dashes one by one */}
           <linearGradient id="flow-sweep" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={VW} y2="0">
-            <stop offset="0" stopColor="#22c55e" stopOpacity="0">
+            <stop offset="0" stopColor="#b8a4ed" stopOpacity="0">
               <animate attributeName="offset" values="-0.07;0.93" dur={`${CYCLE}s`} repeatCount="indefinite" />
             </stop>
-            <stop offset="0" stopColor="#22c55e" stopOpacity="1">
+            <stop offset="0" stopColor="#b8a4ed" stopOpacity="1">
               <animate attributeName="offset" values="0;1" dur={`${CYCLE}s`} repeatCount="indefinite" />
             </stop>
-            <stop offset="0" stopColor="#22c55e" stopOpacity="0">
+            <stop offset="0" stopColor="#b8a4ed" stopOpacity="0">
               <animate attributeName="offset" values="0.07;1.07" dur={`${CYCLE}s`} repeatCount="indefinite" />
             </stop>
           </linearGradient>
@@ -107,7 +107,7 @@ export function OrchestrationFlow() {
           strokeWidth={1.5}
           strokeDasharray="7 7"
         />
-        {/* Green highlight that travels through the dashes */}
+        {/* Accent highlight that travels through the dashes */}
         <line
           x1={TRACK_START}
           y1={TRACK_Y}

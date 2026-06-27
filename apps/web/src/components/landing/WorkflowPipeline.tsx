@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { WORKFLOW_CAPTION, WORKFLOW_NODES } from "./landing-data";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { OrchestrationFlow } from "./OrchestrationFlow";
 import { PipelineNode } from "./PipelineNode";
 import { SectionLabel } from "./SectionLabel";
@@ -34,9 +35,10 @@ export function WorkflowPipeline() {
         <p className="mt-10 text-center text-sm text-muted">
           <Link
             href="/console"
-            className="text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="inline-flex items-center justify-center gap-1 text-accent underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            Watch a live pipeline run →
+            Watch a live pipeline run
+            <ArrowIcon className="h-4 w-4" />
           </Link>
         </p>
       </div>

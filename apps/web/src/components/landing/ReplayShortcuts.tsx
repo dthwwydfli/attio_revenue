@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Flame, Snowflake, Sun } from "lucide-react";
+import { ArrowIcon } from "@/components/ui/ArrowIcon";
 import { StatusBanner } from "@/components/ui/StatusBanner";
 import { cn } from "@/lib/utils";
 
@@ -10,19 +11,19 @@ const SCENARIOS = [
   {
     scenario: "hot" as const,
     title: "Hot lead",
-    desc: "VP RevOps — voice + Attio",
+    desc: "VP RevOps: voice and Attio",
     icon: Flame,
   },
   {
     scenario: "warm" as const,
     title: "Warm lead",
-    desc: "Head of Sales — email + task",
+    desc: "Head of Sales: email and task",
     icon: Sun,
   },
   {
     scenario: "cold" as const,
     title: "Cold lead",
-    desc: "Small retail — nurture only",
+    desc: "Small retail: nurture only",
     icon: Snowflake,
   },
 ];
@@ -39,7 +40,7 @@ export function ReplayShortcuts({ className }: { className?: string }) {
       const res = await fetch(`/api/replay/${scenario}`, { method: "POST" });
       const data = (await res.json()) as { leadRunId?: string; error?: string };
       if (!res.ok || !data.leadRunId) {
-        throw new Error(data.error ?? "Replay failed — is the API running?");
+        throw new Error(data.error ?? "Replay failed. Is the API running?");
       }
       router.push(`/console?leadId=${data.leadRunId}`);
     } catch (err) {
@@ -71,9 +72,10 @@ export function ReplayShortcuts({ className }: { className?: string }) {
               <span className="text-sm font-semibold">{title}</span>
             </div>
             <p className="mt-1 text-xs text-muted">{desc}</p>
-            <p className="mt-2 text-xs text-accent">
-              {loading === scenario ? "Running…" : "Replay →"}
-            </p>
+            <span className="mt-2 inline-flex items-center gap-1 text-xs text-accent">
+              {loading === scenario ? "Running…" : "Replay"}
+              {!loading && <ArrowIcon className="h-3.5 w-3.5" />}
+            </span>
           </button>
         ))}
       </div>

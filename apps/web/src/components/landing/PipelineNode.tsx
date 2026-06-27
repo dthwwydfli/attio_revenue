@@ -21,7 +21,7 @@ export function PipelineNode({ node, showConnector = true, vertical = false }: P
         className={cn(
           "relative flex flex-col items-center rounded-2xl border px-4 py-3 transition-all duration-300",
           node.active
-            ? "border-accent/40 bg-accent/10 shadow-[0_0_30px_-5px_rgba(34,197,94,0.4)]"
+            ? "border-accent/40 bg-accent/10 shadow-[0_0_30px_-5px_rgba(184,164,237,0.35)]"
             : "border-white/10 bg-surface-elevated/80 hover:border-white/20",
           vertical ? "w-full flex-row gap-3 sm:w-auto sm:flex-col" : "min-w-[100px]",
         )}
@@ -39,9 +39,8 @@ export function PipelineNode({ node, showConnector = true, vertical = false }: P
           {node.sublabel && <p className="text-xs text-muted">{node.sublabel}</p>}
         </div>
         {node.active && (
-          <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-accent opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
+          <span className="absolute -top-1 -right-1 rounded-full border border-accent/40 bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-accent">
+            Live
           </span>
         )}
       </div>

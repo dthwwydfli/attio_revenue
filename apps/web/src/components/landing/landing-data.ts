@@ -131,7 +131,7 @@ export const ACCENT_STYLES: Record<
   },
   teal: {
     border: "border-accent-teal/30",
-    glow: "hover:shadow-[0_0_40px_-8px_rgba(34,197,94,0.25)]",
+    glow: "hover:shadow-[0_0_40px_-8px_rgba(184,164,237,0.25)]",
     icon: "text-accent bg-accent/10",
     gradient: "from-accent/10 to-transparent",
   },
