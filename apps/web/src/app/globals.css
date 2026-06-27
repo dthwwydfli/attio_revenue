@@ -5,3 +5,65 @@
 body {
   @apply bg-background text-foreground antialiased;
 }
+
+@layer utilities {
+  .blob {
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+
+  .glass-panel {
+    @apply border border-white/5 bg-surface-elevated/60 backdrop-blur-xl;
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 60px -12px rgba(34, 197, 94, 0.25);
+  }
+
+  .marquee-track {
+    animation: marquee 50s linear infinite;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-foreground to-muted bg-clip-text text-transparent;
+  }
+}
+
+.flow-node {
+  animation: flow-node-pulse 6s linear infinite;
+}
+
+@keyframes flow-node-pulse {
+  0%,
+  16%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(26, 42, 42, 0.8);
+    box-shadow: none;
+    transform: translateY(0);
+  }
+  8% {
+    border-color: rgba(34, 197, 94, 0.55);
+    background-color: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 30px -6px rgba(34, 197, 94, 0.45);
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-safe\:animate-glow-pulse,
+  .motion-safe\:animate-flow-pulse,
+  .motion-safe\:animate-beam-dash,
+  .motion-safe\:animate-flow-sweep,
+  .flow-node {
+    animation: none !important;
+  }
+}
