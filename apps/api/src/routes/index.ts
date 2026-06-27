@@ -6,7 +6,7 @@ import {
   type LeadStatusResponse,
 } from "@leadloop/shared";
 import { env } from "../lib/env.js";
-import { getRun, listRuns } from "../store.js";
+import { getRun, listRuns, appendEvent, updateRun } from "../store.js";
 import { processLead } from "../pipeline.js";
 import { slngWebhookRoute } from "./webhooks/slng.js";
 import type { HealthResponse } from "../types/global.js";

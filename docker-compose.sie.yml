@@ -1,4 +1,5 @@
-# Superlinked SIE for local ICP reranking
+# Superlinked SIE — optional local fallback only
+# Prefer the hackathon GPU cluster via SIE_ENDPOINT in .env (no Docker needed).
 # Usage: docker compose -f docker-compose.sie.yml up -d
 # Docs: https://github.com/superlinked/sie
 

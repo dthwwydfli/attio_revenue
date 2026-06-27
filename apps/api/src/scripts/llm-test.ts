@@ -1,4 +1,5 @@
 import "../lib/env.js";
+import { warmupSieLlmLane, getWarmLlmRoute } from "../lib/sie-client.js";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,6 +27,11 @@ async function main() {
   console.log(`LLM action test — ${scenario}\n`);
   console.log("Scoring:", `${scoring.band} (${scoring.score}) via ${scoring.source}\n`);
 
+  const route = getWarmLlmRoute();
+  console.log(`Warming Qwen lane: ${route.model} @ ${route.gpu}...`);
+  await warmupSieLlmLane();
+  console.log("");
+
   const email = await generateEmailReply(ctx);
   const summary = await generateLeadSummary(ctx);
   const script = await generateCallScript(ctx);
@@ -38,10 +44,22 @@ async function main() {
   console.log("\nRouting:", JSON.stringify(routing, null, 2));
   console.log("\nNotes:", JSON.stringify(notes, null, 2));
 
-  const passed = [email, summary, script, routing, notes].every((r) => r.source === "gemini");
+  const results = [email, summary, script, routing, notes];
+  const sources = results.map((r) => r.source);
+  const allSie = sources.every((s) => s === "sie");
+  const allGemini = sources.every((s) => s === "gemini");
+
   console.log("\n---");
-  console.log(passed ? "PASS — all outputs from Gemini" : "FAIL — one or more outputs used fallback/other provider");
-  process.exit(passed ? 0 : 1);
+  if (allSie) {
+    console.log("PASS — all outputs from SIE (Qwen warm lane)");
+    process.exit(0);
+  }
+  if (allGemini) {
+    console.log("PASS — all outputs from Gemini (SIE unavailable, fallback used)");
+    process.exit(0);
+  }
+  console.log("FAIL — mixed or fallback providers:", sources.join(", "));
+  process.exit(1);
 }
 
 main().catch((err) => {
