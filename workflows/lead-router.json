@@ -1,0 +1,164 @@
+{
+  "name": "LeadLoop Inbound Lead Router",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "inbound-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Inbound Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "leadloop-inbound-lead"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.LEADLOOP_API_URL || 'http://localhost:3001' }}/leads/process",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: $json.body.name || $json.name, email: $json.body.email || $json.email, company: $json.body.company || $json.company, role: $json.body.role || $json.role, message: $json.body.message || $json.message, phone: $json.body.phone || $json.phone, source: $json.body.source || $json.source || 'n8n_webhook' }) }}",
+        "options": {}
+      },
+      "id": "process-lead",
+      "name": "Process Lead (LeadLoop API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "hot-check",
+              "leftValue": "={{ $json.band }}",
+              "rightValue": "hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-hot",
+      "name": "IF Hot Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-hot",
+              "name": "message",
+              "value": "=Hot lead routed: {{ $json.leadRunId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-hot",
+      "name": "Log Hot Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ leadRunId: $('Process Lead (LeadLoop API)').item.json.leadRunId, status: $('Process Lead (LeadLoop API)').item.json.status, band: $('Process Lead (LeadLoop API)').item.json.band, attioPersonUrl: $('Process Lead (LeadLoop API)').item.json.attioPersonUrl }) }}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [960, 400]
+    }
+  ],
+  "connections": {
+    "Inbound Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Lead (LeadLoop API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Lead (LeadLoop API)": {
+      "main": [
+        [
+          {
+            "node": "IF Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Hot Lead": {
+      "main": [
+        [
+          {
+            "node": "Log Hot Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Hot Lead": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "leadloop"
+    },
+    {
+      "name": "attio"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

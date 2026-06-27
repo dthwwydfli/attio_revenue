@@ -1,0 +1,18 @@
+# Superlinked SIE for local ICP reranking
+# Usage: docker compose -f docker-compose.sie.yml up -d
+# Docs: https://github.com/superlinked/superlinked-alpha
+
+services:
+  sie:
+    image: ghcr.io/superlinked/sie:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SIE_HOST=0.0.0.0
+      - SIE_PORT=8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
