@@ -1,32 +1,74 @@
 import type { LeadInput, GeneratedAction, SlngResult } from "@leadloop/shared";
 import { env } from "../config.js";
+import type { LLMCallScriptResult } from "./llm.js";
+
+export interface SlngVoiceContext {
+  leadRunId: string;
+  callScript?: LLMCallScriptResult;
+}
+
+function isSlngConfigured(): boolean {
+  return Boolean(
+    env.slngApiKey &&
+      env.slngAgentId &&
+      !env.slngApiKey.includes("placeholder") &&
+      !env.slngAgentId.includes("placeholder"),
+  );
+}
+
+function buildSlngArguments(
+  input: LeadInput,
+  action: GeneratedAction,
+  ctx: SlngVoiceContext,
+): Record<string, string | string[]> {
+  const args: Record<string, string | string[]> = {
+    lead_name: input.name.split(" ")[0] ?? input.name,
+    company_name: input.company,
+    pitch_context: action.rationale.slice(0, 200),
+    lead_run_id: ctx.leadRunId,
+  };
+
+  if (ctx.callScript) {
+    args.opening = ctx.callScript.opening;
+    args.pitch = ctx.callScript.pitch;
+    args.close = ctx.callScript.close;
+    args.objection_handlers = ctx.callScript.objectionHandlers;
+  }
+
+  return args;
+}
+
+function slngMetadata(ctx: SlngVoiceContext): { lead_run_id: string } {
+  return { lead_run_id: ctx.leadRunId };
+}
 
 export async function dispatchVoiceTouchpoint(
   input: LeadInput,
   action: GeneratedAction,
+  ctx: SlngVoiceContext,
 ): Promise<SlngResult> {
-  if (!action.shouldCallVoice || scoreBandRequiresVoice(input) === false) {
+  if (!action.shouldCallVoice) {
     return { status: "skipped" };
   }
 
-  if (env.slngApiKey && env.slngAgentId) {
+  if (isSlngConfigured()) {
     try {
-      return await dispatchSlngWebSession(input, action);
+      if (input.phone) {
+        return await dispatchSlngCall(input, action, ctx);
+      }
+      return await dispatchSlngWebSession(input, action, ctx);
     } catch {
-      return mockSlngSession(input);
+      return mockSlngSession(input, ctx.leadRunId);
     }
   }
 
-  return mockSlngSession(input);
-}
-
-function scoreBandRequiresVoice(_input: LeadInput): boolean {
-  return true;
+  return mockSlngSession(input, ctx.leadRunId);
 }
 
 async function dispatchSlngWebSession(
   input: LeadInput,
   action: GeneratedAction,
+  ctx: SlngVoiceContext,
 ): Promise<SlngResult> {
   const res = await fetch(
     `https://api.agents.slng.ai/v1/agents/${env.slngAgentId}/web-sessions`,
@@ -37,12 +79,9 @@ async function dispatchSlngWebSession(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        arguments: {
-          lead_name: input.name.split(" ")[0],
-          company_name: input.company,
-          pitch_context: action.rationale.slice(0, 200),
-        },
+        arguments: buildSlngArguments(input, action, ctx),
         participant_name: input.name,
+        metadata: slngMetadata(ctx),
       }),
     },
   );
@@ -66,7 +105,11 @@ async function dispatchSlngWebSession(
   };
 }
 
-async function dispatchSlngCall(input: LeadInput, action: GeneratedAction): Promise<SlngResult> {
+async function dispatchSlngCall(
+  input: LeadInput,
+  action: GeneratedAction,
+  ctx: SlngVoiceContext,
+): Promise<SlngResult> {
   if (!input.phone) {
     return { status: "skipped" };
   }
@@ -81,11 +124,8 @@ async function dispatchSlngCall(input: LeadInput, action: GeneratedAction): Prom
       },
       body: JSON.stringify({
         phone_number: input.phone,
-        arguments: {
-          lead_name: input.name.split(" ")[0],
-          company_name: input.company,
-          pitch_context: action.rationale.slice(0, 200),
-        },
+        arguments: buildSlngArguments(input, action, ctx),
+        metadata: slngMetadata(ctx),
       }),
     },
   );
@@ -102,11 +142,11 @@ async function dispatchSlngCall(input: LeadInput, action: GeneratedAction): Prom
   };
 }
 
-function mockSlngSession(input: LeadInput): SlngResult {
+function mockSlngSession(input: LeadInput, leadRunId: string): SlngResult {
   return {
     status: "web_session_started",
-    callId: `mock-${Date.now()}`,
-    transcriptSnippet: `[Demo mode] SLNG voice agent would engage ${input.name} at ${input.company} with personalized pitch.`,
+    callId: `mock-${leadRunId}`,
+    transcriptSnippet: `[Demo mode] SLNG voice agent would engage ${input.name} at ${input.company} with personalized pitch. Add SLNG_API_KEY and SLNG_AGENT_ID for a live session.`,
   };
 }
 
@@ -124,6 +164,11 @@ export function handleSlngWebhook(payload: {
     callId: payload.call_id,
     transcriptSnippet: snippet,
   };
+}
+
+export function validateSlngWebhookSecret(headerSecret: string | undefined): boolean {
+  if (!env.slngWebhookSecret) return true;
+  return headerSecret === env.slngWebhookSecret;
 }
 
 export { dispatchSlngCall };

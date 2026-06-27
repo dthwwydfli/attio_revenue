@@ -3,7 +3,7 @@ export interface HealthResponse {
   uptime: number;
   attio: boolean;
   tavily: boolean;
-  openai: boolean;
+  gemini: boolean;
   slng: boolean;
   sie: string;
 }

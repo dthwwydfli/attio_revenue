@@ -17,6 +17,19 @@ const SCENARIO_FIXTURES: Record<string, string> = {
   "localshop.com": "cold",
 };
 
+const DEMO_DOMAINS = new Set(Object.keys(SCENARIO_FIXTURES));
+
+export function isDemoDomain(domain?: string | null): boolean {
+  const normalized = normalizeDomain(domain);
+  return normalized ? DEMO_DOMAINS.has(normalized) : false;
+}
+
+export function expectedDemoBand(domain?: string | null): "hot" | "warm" | "cold" | null {
+  const normalized = normalizeDomain(domain);
+  if (!normalized || !DEMO_DOMAINS.has(normalized)) return null;
+  return SCENARIO_FIXTURES[normalized] as "hot" | "warm" | "cold";
+}
+
 interface TavilyResponse {
   answer?: string;
   results?: Array<{ title?: string; content?: string; url?: string }>;
@@ -96,7 +109,16 @@ async function ensureFixtureDir(): Promise<void> {
   }
 }
 
-async function writeFixture(companyName: string, data: EnrichmentResult): Promise<void> {
+async function writeFixture(
+  companyName: string,
+  data: EnrichmentResult,
+  domain?: string,
+): Promise<void> {
+  if (isDemoDomain(domain ?? data.domain)) {
+    logger.info({ domain: domain ?? data.domain }, "Skipping fixture write for demo domain");
+    return;
+  }
+
   try {
     await ensureFixtureDir();
     const file = resolve(FIXTURE_DIR, `${slugify(companyName)}.json`);
@@ -118,13 +140,27 @@ async function readFixtureFile(fileName: string): Promise<EnrichmentResult | nul
 }
 
 async function readFixture(companyName: string, domain?: string): Promise<EnrichmentResult | null> {
-  const candidates = [
-    `${slugify(companyName)}.json`,
-    domain ? `${normalizeDomain(domain)}.json` : null,
-    domain ? `${SCENARIO_FIXTURES[normalizeDomain(domain) ?? ""]}.json` : null,
-  ].filter((value): value is string => Boolean(value));
+  const normalizedDomain = normalizeDomain(domain);
+  const scenarioFile =
+    normalizedDomain && SCENARIO_FIXTURES[normalizedDomain]
+      ? `${SCENARIO_FIXTURES[normalizedDomain]}.json`
+      : null;
 
-  for (const fileName of candidates) {
+  const candidates = isDemoDomain(normalizedDomain)
+    ? [
+        scenarioFile,
+        normalizedDomain ? `${normalizedDomain}.json` : null,
+        `${slugify(companyName)}.json`,
+      ]
+    : [
+        `${slugify(companyName)}.json`,
+        normalizedDomain ? `${normalizedDomain}.json` : null,
+        scenarioFile,
+      ];
+
+  const files = candidates.filter((value): value is string => Boolean(value));
+
+  for (const fileName of files) {
     const fixture = await readFixtureFile(fileName);
     if (fixture) {
       return { ...fixture, source: "fixture" };
@@ -341,17 +377,25 @@ export async function enrichLead(
   const normalizedDomain = normalizeDomain(domain) ?? undefined;
 
   try {
+    if (isDemoDomain(normalizedDomain)) {
+      const demoFixture = await readFixture(companyName, normalizedDomain);
+      if (demoFixture) {
+        logger.info({ enrichment_source: "fixture", companyName, domain: normalizedDomain, demo: true });
+        return demoFixture;
+      }
+    }
+
     const tavily = await fetchFromTavily(companyName, normalizedDomain);
     if (tavily) {
       logger.info({ enrichment_source: "tavily", companyName, domain: normalizedDomain });
-      await writeFixture(companyName, tavily);
+      await writeFixture(companyName, tavily, normalizedDomain);
       return tavily;
     }
 
     const serper = await fetchFromSerper(companyName, normalizedDomain);
     if (serper) {
       logger.info({ enrichment_source: "serper", companyName, domain: normalizedDomain });
-      await writeFixture(companyName, serper);
+      await writeFixture(companyName, serper, normalizedDomain);
       return serper;
     }
 
@@ -362,7 +406,7 @@ export async function enrichLead(
     }
 
     const empty = placeholder(normalizedDomain);
-    await writeFixture(companyName, empty);
+    await writeFixture(companyName, empty, normalizedDomain);
     logger.info({ enrichment_source: "placeholder", companyName, domain: normalizedDomain });
     return empty;
   } catch (err) {
@@ -375,7 +419,7 @@ export async function enrichLead(
     }
 
     const empty = placeholder(normalizedDomain);
-    await writeFixture(companyName, empty);
+    await writeFixture(companyName, empty, normalizedDomain);
     logger.info({ enrichment_source: "placeholder", companyName, domain: normalizedDomain });
     return empty;
   }

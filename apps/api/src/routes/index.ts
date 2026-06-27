@@ -8,7 +8,8 @@ import {
 import { env } from "../lib/env.js";
 import { getRun, listRuns } from "../store.js";
 import { processLead } from "../pipeline.js";
-import { handleSlngWebhook } from "../services/slng.js";
+import { approveLead, ApprovalError } from "../services/approve.js";
+import { handleSlngWebhook, validateSlngWebhookSecret } from "../services/slng.js";
 import { appendEvent, updateRun } from "../store.js";
 import { createNote } from "../services/attio.js";
 import type { HealthResponse } from "../types/global.js";
@@ -19,7 +20,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
     uptime: process.uptime(),
     attio: Boolean(env.attioApiKey),
     tavily: Boolean(env.tavilyApiKey),
-    openai: Boolean(env.openaiApiKey),
+    gemini: Boolean(env.geminiApiKey),
     slng: Boolean(env.slngApiKey && env.slngAgentId),
     sie: env.sieEndpoint,
   }));
@@ -56,8 +57,25 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       slng: run.slng,
       attio: run.attio,
       error: run.error,
+      humanApproved: run.humanApproved,
+      approvedAt: run.approvedAt,
     };
     return status;
+  });
+
+  app.post<{ Params: { id: string } }>("/leads/:id/approve", async (request, reply) => {
+    const run = getRun(request.params.id);
+    if (!run) return reply.status(404).send({ error: "Lead run not found" });
+
+    try {
+      const result = await approveLead(run);
+      return result;
+    } catch (err) {
+      if (err instanceof ApprovalError) {
+        return reply.status(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
   });
 
   app.get("/leads", async () => listRuns());
@@ -76,31 +94,45 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   );
 
   app.post("/webhooks/slng", async (request, reply) => {
+    const headerSecret = request.headers["x-slng-webhook-secret"];
+    const secret =
+      typeof headerSecret === "string"
+        ? headerSecret
+        : Array.isArray(headerSecret)
+          ? headerSecret[0]
+          : undefined;
+
+    if (!validateSlngWebhookSecret(secret)) {
+      return reply.status(401).send({ error: "Invalid SLNG webhook secret" });
+    }
+
     const payload = request.body as {
       call_id?: string;
       summary?: string;
       transcript?: string;
       lead_run_id?: string;
+      metadata?: { lead_run_id?: string };
     };
 
+    const leadRunId = payload.lead_run_id ?? payload.metadata?.lead_run_id;
     const result = handleSlngWebhook(payload);
 
-    if (payload.lead_run_id) {
-      const run = getRun(payload.lead_run_id);
+    if (leadRunId) {
+      const run = getRun(leadRunId);
       if (run?.attio?.personRecordId && result.transcriptSnippet) {
         await createNote(
           run.attio.personRecordId,
           `## SLNG Voice Callback\n\n${result.transcriptSnippet}`,
         ).catch(() => undefined);
       }
-      updateRun(payload.lead_run_id, {
+      updateRun(leadRunId, {
         slng: {
           status: result.status,
           callId: result.callId,
           transcriptSnippet: result.transcriptSnippet,
         },
       });
-      appendEvent(payload.lead_run_id, {
+      appendEvent(leadRunId, {
         step: "voice",
         status: "completed",
         message: "SLNG webhook received",

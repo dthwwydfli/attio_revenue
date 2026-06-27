@@ -23,7 +23,7 @@ import {
 } from "./services/attio.js";
 import { enrichLead } from "./services/enrich.js";
 import { scoreLead, toScoreResult } from "./services/scoring.js";
-import { generateAction } from "./services/llm.js";
+import { generateAction, generateCallScript } from "./services/llm.js";
 import { dispatchVoiceTouchpoint } from "./services/slng.js";
 
 function audit(step: PipelineStep, status: AuditEvent["status"], message?: string, durationMs?: number): AuditEvent {
@@ -94,11 +94,16 @@ async function writebackToAttio(
     await updatePersonAttributes(personRecordId, {
       lead_score: score.score,
       lead_band: score.band,
-      routing_status: "completed",
       agent_summary: action.rationale.slice(0, 500),
       source: input.source,
       last_agent_run_at: new Date().toISOString(),
     });
+
+    try {
+      await updatePersonAttributes(personRecordId, { routing_status: "completed" });
+    } catch {
+      // Non-fatal — routing_status select options may differ per workspace
+    }
 
     if (companyRecordId) {
       await updateCompanyAttributes(companyRecordId, {
@@ -117,11 +122,15 @@ async function writebackToAttio(
       `### Enrichment`,
       enrichment.description,
       enrichment.news.length ? `\n**News:** ${enrichment.news.join(" | ")}` : "",
-      ``,
-      `### Generated Reply`,
-      `**Subject:** ${action.replySubject}`,
-      ``,
-      action.replyBody,
+      score.band === "cold"
+        ? `\n\n### Routing\nNurture only — low ICP fit. Added to nurture queue.`
+        : [
+            ``,
+            `### Generated Reply`,
+            `**Subject:** ${action.replySubject}`,
+            ``,
+            action.replyBody,
+          ].join("\n"),
       slngTranscript ? `\n### Voice Touchpoint\n${slngTranscript}` : "",
     ].join("\n");
 
@@ -129,12 +138,16 @@ async function writebackToAttio(
 
     let taskId: string | undefined;
     if (action.taskTitle && (score.band === "hot" || score.band === "warm" || score.band === "needs_review")) {
-      const task = await createTask(
-        personRecordId,
-        action.taskTitle,
-        action.taskBody ?? action.taskTitle,
-      );
-      taskId = task.taskId;
+      try {
+        const task = await createTask(
+          personRecordId,
+          action.taskTitle,
+          action.taskBody ?? action.taskTitle,
+        );
+        taskId = task.taskId;
+      } catch {
+        // Non-fatal — note and attributes are the primary writeback
+      }
     }
 
     return { noteId, taskId, skipped: false };
@@ -214,13 +227,17 @@ export async function processLead(input: LeadInput): Promise<ProcessLeadResponse
     appendEvent(id, audit("action_generated", "completed", action.source, Date.now() - actionStart));
     updateRun(id, { action });
 
-    // Step: Voice (hot + phone)
-    updateRun(id, { currentStep: "voice", status: score.band === "hot" && input.phone ? "voice_pending" : "routed" });
+    // Step: Voice (hot leads — web session or outbound call when phone present)
+    updateRun(id, {
+      currentStep: "voice",
+      status: score.band === "hot" && action.shouldCallVoice ? "voice_pending" : "routed",
+    });
     appendEvent(id, audit("voice", "started"));
     const voiceStart = Date.now();
     let slng;
     if (score.band === "hot" && action.shouldCallVoice) {
-      slng = await dispatchVoiceTouchpoint(input, action);
+      const callScript = await generateCallScript({ lead: input, enrichment, scoring });
+      slng = await dispatchVoiceTouchpoint(input, action, { leadRunId: id, callScript });
     } else {
       slng = { status: "skipped" as const };
     }
